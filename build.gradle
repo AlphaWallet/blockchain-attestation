@@ -60,6 +60,7 @@ shadowJar {
     manifest {
         attributes 'Main-Class': 'com.alphawallet.attestation.demo.Demo'
     }
+    archiveFileName = "Demo.jar"
 }
 
 task packageFat(type: Zip) {

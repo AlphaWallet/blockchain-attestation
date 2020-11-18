@@ -2,52 +2,55 @@ This project has demonstrative use of blockchain attestations.
 
 ## Roles:
 
-Three roles are involved.
+## Build Demo.jar
+
+Build with gradle:
+
+    $ gradle shadowJar
+
+Check Demo.jar is built:
+
+    $ ls ./build/libs/Demo.jar
+    
+## Prepare
+
+Construct keys for all roles. Three roles are involved.
 
 Issuer
 : Someone who issues a crypto asset to the user redeemable by its identifier (e.g. email address)
 
-ID attester
+Attester
 : An organisation which validates an identifier of the user.
 
-User
-: The beneficiary of the crypto asset.
+Beneficiary
+: The recipient of the crypto asset.
 
-## Demonstration
+Commands:
 
-As an example, the user is identified with `my@example.com` and their ethereum address is `0xdecafbad…`.
+    $ java -jar build/libs/Demo.jar keys issuer-pub.pem issuer.pem
+    $ java -jar build/libs/Demo.jar keys attester-pub.pem attester.pem
+    $ java -jar build/libs/Demo.jar keys beneficiary-pub.pem beneficiary.pem
 
-In all cases, the private keys are pre-coded inside the demonstration classes.
+## Demo
 
-### Issuing of the asset
+### The Issuer Issues
 
-Issuer runs:
+Issuer issues a cheque (redeemable asset) by:
 
-    $ java -jar … my.class.name my@example.com > asset.der
+    $ java -jar build/libs/Demo.jar create-cheque 42 test@test.ts mail 3600 issuer.pem cheque.pem cheque-secret.pem
+
+This creates two files, `cheque.pem`, `cheque-secret.pem`. Both are passed to the beneficiary.
+
+### The Beneficiary requests an identifier attestation
+
+    $ java -jar build/libs/Demo.jar request-attest beneficiary.pem test@test.ts mail request.pem request-secret.pem
     
-    Issuer public key: 0x8038930802938
-    User identifier: my@example.com
-    Asset Cheque (redeembable) written to the output.
+### The Attester constructs an attestation
 
-### Issuing of the identifier attestation
+    $ java -jar build/libs/Demo.jar construct-attest attester.pem AlphaWallet 3600 request.pem attestation.crt
 
-The user runs this:
+### The Beneficiary redeems (use) the cheque (asset)
 
-    $ java -jar … my.class.name > req.csr
-    CSR written to the output - now you can send it to the attester.
-    
-This generates a request to get the attestation and save it as req.csr. It is passed to the attester which runs this:
-
-    $ java -jar … my.class.name req.csr > id_att.der
-    Issuer public key: 0x8038930802938
-    User identifier: my@example.com
-    Identifier attestation written to the output.
-
-### Use of the asset
-
-Let's say the user wishes to access a function which requires the user having the crypto asset. Let's say it's `redeem()`.
-
-    $ java -jar … call.function.with.attestation --id=id_att.der --asset=asset.der my_example_smart_contract.redeem()
-    Smart contract says "yes".
+    $ java -jar build/libs/Demo.jar receive-cheque beneficiary.pem cheque-secret.pem request-secret.pem cheque.pem attestation.crt attester-pub.pem
 
 
