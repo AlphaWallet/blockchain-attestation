@@ -41,6 +41,30 @@ class Point {
     }
     return p;
   }
+
+  // Generate a private key
+  static async generateKey(): Promise<bigint> {
+    // using subtlecrypto to generate a key. note that we are using an AES key
+    // as an secp256k1 key here, since browsers don't support the latter;
+    // that means all the keys must be created exportable to work with.
+    const keyPair = await crypto.subtle.generateKey(
+        {
+          name: 'AES-GCM',
+          length: 256
+        },
+        true,
+        ['encrypt']
+    );
+    let hex = ['0x'];
+    const exported = await crypto.subtle.exportKey('raw', keyPair);
+    (new Uint8Array(exported)).forEach(i => {
+      var h = i.toString(16);
+      if (h.length % 2) { h = '0' + h; }
+      hex.push(h);
+    });
+    // the next line works if AES key is always positive
+    return BigInt(hex.join('')) % CURVE.n;
+  }
 }
 
 function mod(a: bigint, b: bigint = CURVE.P): bigint {
