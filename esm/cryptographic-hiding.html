@@ -1,6 +1,20 @@
 <html>
 <head>
     <script type="text/javascript" src="secp256k1.js"></script>
+    <script type="text/javascript" src="raw.js">
+
+    </script>
+    <script type="text/javascript">
+        async function calc() {
+            // 0x5ff is ol**.g***.u*@gmail.com Keccak-256 hashed
+            hashed_i = BigInt('0x5ffeb9a40ee8c14b5af808c6de5863469ce5ea7933bda393f70ca138a8b2d3c3');
+            // secret p value
+            secret_p = await Point.generateKey()
+            hiding = G.multiplyDA(hashed_i).multiplyDA(secret_p);
+            document.getElementById('x_value').innerText = hiding.x;
+            document.getElementById('y_value').innerText = hiding.y;
+        }
+    </script>
 </head>
 <body>
 <table>
@@ -10,16 +24,7 @@
     <tr><th>y_value</th><td id="y_value">Click "Calculate" to calculate</td></tr>
     </tbody>
 </table>
-    <button onclick="
-    // 0x5ff is ol**.g***.u*@gmail.com Keccak-256 hashed
-    hashed_i = BigInt('0x5ffeb9a40ee8c14b5af808c6de5863469ce5ea7933bda393f70ca138a8b2d3c3');
-
-    // secret p value
-    secret_p = 26577169521080041468048461869858263792019104904445492498349147139819994214859n
-    hiding = G.multiplyDA(hashed_i).multiplyDA(secret_p);
-    document.getElementById('x_value').innerText = G.x;
-    document.getElementById('y_value').innerText = G.y;
-    ">
+    <button onclick="calc();">
         Calculate
     </button>
 </body>
