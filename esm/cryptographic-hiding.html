@@ -1,7 +1,8 @@
 <html>
 <head>
-    <script type="text/javascript" src="secp256k1.js"></script>
-    <script type="text/javascript" src="raw.js">
+    <script type="text/javascript" src="secp256k1_vanilla.js"></script>
+    <script type="text/javascript" src="sha3.js"></script>
+<!--    <script type="text/javascript" src="raw.js">-->
 
     </script>
     <script type="text/javascript">
@@ -27,5 +28,15 @@
     <button onclick="calc();">
         Calculate
     </button>
+<script>
+    let amount = 10;
+    let receiverId = "test@test.com";
+    let type = "mail";
+    let validityInMilliseconds = 3600;
+    let secret = 93788533537077743486725554978273275173856120927531780306895096610228714487710n;
+    let keys = [];
+
+    createCheque(receiverId, type, amount, validityInMilliseconds, keys, secret);
+</script>
 </body>
 </html>
