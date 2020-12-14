@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        body {
+            text-align: center;
+            background: #fff;
+        }
+        #submit {
+            background: #ccc;
+            font-weight: 700;
+            padding: 5px 20px;
+            display: inline-block;
+            cursor: pointer;
+        }
+        #result {
+            width: 300px;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+<body>
+<h1>Its iframe content. lets do what it asks and Submit result to the parent window with postMessage</h1>
+    <div id="input_data"></div>
+    <div>
+        <input type="text" id="result">
+    </div>
+    <div id="submit">Submit to parent</div>
+    <script>
+        function listener(event) {
+            // if (event.origin != 'http://source.site') {
+            //     return;
+            // }
+
+            if (!event.data.ethrequest) {
+                return;
+            }
+
+            console.log(event);
+
+            input_data.innerText = event.data.ethrequest;
+
+            // const parent = window.parent;
+            const source = event.source;
+            if (parent) {
+                submit.addEventListener('click', (e) => {
+                    source.postMessage({ethanswer: result.value}, event.origin)
+                })
+
+
+            }
+        }
+
+        if (window.addEventListener) {
+            window.addEventListener("message", listener);
+        } else {
+            // IE8
+            window.attachEvent("onmessage", listener);
+        }
+
+    </script>
+</body>
+</html>

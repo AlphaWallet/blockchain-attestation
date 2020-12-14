@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        body {
+            text-align: center;
+        }
+        #submit {
+            background: #ccc;
+            font-weight: 700;
+            padding: 5px 20px;
+            display: inline-block;
+            cursor: pointer;
+        }
+        #question {
+            width: 300px;
+            margin: 20px auto;
+        }
+        .lightbox {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: #000e;
+            z-index: 1;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .lightbox.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .lightbox iframe {
+            width: 500px;
+            height: 500px;
+        }
+        .container {
+            padding: 50px 0;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h2 {
+            margin-top: 30px;
+        }
+        #answer_data {
+            font-size: 24px;
+            color: green;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Its parent window. Click "Request answer" to open lightbox and ask iframe to answer the question</h1>
+    <input type="text" id="question" value="please calc 2+5 and enter value to input, then press submit">
+    <div>
+        <div id="submit">Submit to parent</div>
+    </div>
+    <div id="answer"></div>
+    <div class="lightbox" id="lb_wrap">
+        <div id="lb_content">
+
+        </div>
+    </div>
+</div>
+
+<script>
+    let path = window.location.href;
+    if (path.lastIndexOf("#") > -1) path = path.substring(0, path.lastIndexOf("#"));
+    path = path.substring(0, path.lastIndexOf("/"));
+
+    const remoteUrl = path + "/enrich_var.html";
+
+    function listener(event) {
+
+        if (!event.data.ethanswer) {
+            return;
+        }
+        answer.innerHTML = '<h2>Received answer from iframe</h2><div id="answer_data">' + event.data.ethanswer + '</div>';
+        lb_wrap.classList.remove('active');
+    }
+
+    if (window.addEventListener) {
+        window.addEventListener("message", listener);
+    } else {
+        // IE8
+        window.attachEvent("onmessage", listener);
+    }
+
+    submit.addEventListener('click',()=>{
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('name', 'target');
+        // iframe.style.display = 'none';
+        iframe.src = remoteUrl;
+        iframe.onload = ()=>{
+            // console.log("remoteUrl = " + remoteUrl);
+            const url = new URL(remoteUrl);
+            iframe.contentWindow.postMessage({ethrequest: question.value}, url.origin);
+        }
+        lb_content.appendChild(iframe);
+        lb_wrap.classList.add('active');
+    })
+
+
+
+</script>
+</body>
+</html>
