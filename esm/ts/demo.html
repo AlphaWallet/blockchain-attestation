@@ -1,0 +1,50 @@
+<html>
+<head>
+    <style>
+        #log div {
+            margin-bottom: 5px;
+            background-color: #f5f5f5;
+            padding: 5px 10px;
+            white-space: normal;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+<div id="log"></div>
+    <script type="text/javascript" src="dist/bundle.js"></script>
+<script>
+    function writeToLog(text){
+        let node = document.createElement('div');
+        node.innerText = counter + ". " + text;
+        log.prepend(node);
+        counter++;
+    }
+    let counter = 1;
+    (async ()=>{
+        let crypto = new CryptoTicket();
+        writeToLog("Constructing key pair......");
+        let keys = await crypto.createKeys();
+        console.log(keys);
+
+        writeToLog("private key = " + keys.priv.toString(16));
+        writeToLog("Creating cheque with params '12', 'test@test.com', 'mail' , '3600'");
+
+        let cheque = crypto.createCheque(12, 'test@test.com', 'mail' , '3600', keys);
+        writeToLog("Cheque+Signature_PrivateKey : " + cheque.chequeEncoded);
+        writeToLog("Only Cheque : " + cheque.cheque);
+        writeToLog("derSignature : " + cheque.derSignature);
+        writeToLog("derSecret : " + cheque.derSecret);
+
+        let requestAttest = crypto.requestAttest('test@test.com', 'mail', keys);
+
+        writeToLog("Attest request : " + requestAttest.request);
+        writeToLog("Attest request signature : " + requestAttest.requestSignature);
+        writeToLog("Attest request derSecret : " + requestAttest.requestSecret);
+
+
+    })()
+
+</script>
+</body>
+</html>
