@@ -28,10 +28,12 @@
         console.log(keys);
 
         writeToLog("private key = " + keys.priv.toString(16));
-        writeToLog("Creating cheque with params '12', 'test@test.com', 'mail' , '3600'");
 
-        let cheque = crypto.createCheque(12, 'test@test.com', 'mail' , '3600', keys);
-        writeToLog("Cheque+Signature_PrivateKey : " + cheque.chequeEncoded);
+        let chequeSecret = crypto.crypto.makeSecret(32);
+        writeToLog("Cheque Secret generated : " + chequeSecret);
+        writeToLog("Creating cheque with params '12, test@test.com, mail , 3600, {secret}");
+        let cheque = crypto.createCheque(12, 'test@test.com', 'mail' , '3600', keys, chequeSecret);
+        writeToLog("DER(Cheque+PrivateKey+Signature) : " + cheque.chequeEncoded);
         writeToLog("Only Cheque : " + cheque.cheque);
         writeToLog("derSignature : " + cheque.derSignature);
         writeToLog("derSecret : " + cheque.derSecret);
