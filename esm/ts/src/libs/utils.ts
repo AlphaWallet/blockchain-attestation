@@ -8,6 +8,19 @@ export function stringToHex(str: string) {
     return hex;
 }
 
+export function hexStringToArray(str: string) {
+    let arr = [];
+    let strArr = [...str];
+    if (strArr.length % 2) strArr.unshift('0');
+    let tempStr = '';
+    while (strArr.length) {
+        tempStr = '';
+        tempStr += strArr.shift() + strArr.shift();
+        arr.push(parseInt(tempStr,16));
+    }
+    return arr;
+}
+
 export function mod(a: bigint, b: bigint = CURVE.P): bigint {
     const result = a % b;
     return result >= 0 ? result : b + result;
@@ -82,4 +95,21 @@ export function uint8merge(list : Uint8Array[]): Uint8Array{
         out = temp;
     }
     return out;
+}
+
+export function uint8arrayToBase64( bytes: Uint8Array ): string {
+    var binary = '';
+    var len = bytes.byteLength;
+    for (var i = 0; i < len; i++) {
+        binary += String.fromCharCode( bytes[ i ] );
+    }
+    return window.btoa( binary );
+}
+export function base64ToUint8array( base64str: string ): Uint8Array {
+    var asciiStr = window.atob( base64str );
+    let byteArray: number[] = [];
+    for (var i = 0; i < asciiStr.length; i++) {
+        byteArray.push(asciiStr.charCodeAt(i));
+    }
+    return Uint8Array.from( byteArray );
 }

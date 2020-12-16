@@ -138,31 +138,32 @@ class AttestationCrypto {
         // console.log("referencePointY = ",referencePoint.y.toString(16));
         return resPoint;
     }
-    async genaratePrivateKey(): Promise<bigint> {
-        // using subtlecrypto to generate a key. note that we are using an AES key
-        // as an secp256k1 key here, since browsers don't support the latter;
-        // that means all the keys must be created exportable to work with.
-        const keyPair = await crypto.subtle.generateKey(
-            {
-                name: 'AES-GCM',
-                length: 256
-            },
-            true,
-            ['encrypt']
-        );
-        let hex = ['0x'];
-        const exported = await crypto.subtle.exportKey('raw', keyPair);
-        (new Uint8Array(exported)).forEach(i => {
-            var h = i.toString(16);
-            if (h.length % 2) { h = '0' + h; }
-            hex.push(h);
-        });
-        // the next line works if AES key is always positive
-        console.log(hex);
-        return BigInt(hex.join('')) % CURVE.n;
-    }
+    // async genaratePrivateKey(): Promise<bigint> {
+    //     // using subtlecrypto to generate a key. note that we are using an AES key
+    //     // as an secp256k1 key here, since browsers don't support the latter;
+    //     // that means all the keys must be created exportable to work with.
+    //     const keyPair = await crypto.subtle.generateKey(
+    //         {
+    //             name: 'AES-GCM',
+    //             length: 256
+    //         },
+    //         true,
+    //         ['encrypt']
+    //     );
+    //     let hex = ['0x'];
+    //     const exported = await crypto.subtle.exportKey('raw', keyPair);
+    //     (new Uint8Array(exported)).forEach(i => {
+    //         var h = i.toString(16);
+    //         if (h.length % 2) { h = '0' + h; }
+    //         hex.push(h);
+    //     });
+    //     // the next line works if AES key is always positive
+    //     console.log(hex);
+    //     return BigInt(hex.join('')) % CURVE.n;
+    // }
     async createKeys(): Promise<{priv: bigint, pub: any}> {
-        let priv = await this.genaratePrivateKey();
+        // let priv = await this.genaratePrivateKey();
+        let priv = BigInt('0x'+uint8tohex(crypto.getRandomValues(new Uint8Array(32))) ) % CURVE.n;
         return {
             priv,
             pub: getPublicKey(priv)
@@ -285,8 +286,10 @@ class Cheque {
 
 class main {
     crypto: AttestationCrypto;
+    Asn1Der: Asn1Der;
     constructor() {
         this.crypto = new AttestationCrypto();
+        this.Asn1Der = new Asn1Der();
     }
     createKeys() {
         return this.crypto.createKeys();
