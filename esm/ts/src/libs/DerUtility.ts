@@ -1,4 +1,4 @@
-import { stringToHex } from "./utils";
+import { stringToHex,hexStringToArray } from "./utils";
 
 export class DERUtility {
     static restoreBase64Keys(der: string){
@@ -45,7 +45,7 @@ const Asn1DerTagByType: {[index: string]:number} = {
     SEQUENCE_30: 48,
     SET: 49
 }
-const Asn1DerTagById = {
+const Asn1DerTagById: {[index: number]:string} = {
     0: "END_OF_CONTENT",
     1: "BOOLEAN",
     2: "INTEGER",
@@ -64,6 +64,7 @@ const Asn1DerTagById = {
     19: "PRINTABLE_STRING",
     22: "IA5STRING",
     24: "GENERALIZED_TIME",
+    26: "VISIBLE_STRING",
     48: "SEQUENCE_30",
     49: "SET",
 }
@@ -109,95 +110,94 @@ export class Asn1Der {
         return encType.toString(16).padStart(2, '0') + encLength + encValue;
     }
 
-    // function Asn1Der(byteArray, _parent, _root) {
-    // decode(byteArray) {
-    //     this._io = byteArray;
-    //     // this._parent = _parent;
-    //     // this._root = _root || this;
-    //     this._read();
-    // }
-    // _read() {
-    //     // this.typeTag = this._io.readU1();
-    //     this.typeTag = this._io.shift();
-    //     this.len = new LenEncoded(this._io, this, this._root);
-    //     switch (this.typeTag) {
-    //         /*
-    //         case Asn1Der.TypeTag.PRINTABLE_STRING:
-    //             this._raw_body = this._io.readBytes(this.len.result);
-    //             var _io__raw_body = new KaitaiStream(this._raw_body);
-    //             this.body = new BodyPrintableString(_io__raw_body, this, this._root);
-    //             break;
-    //         case Asn1Der.TypeTag.SEQUENCE_10:
-    //             this._raw_body = this._io.readBytes(this.len.result);
-    //             var _io__raw_body = new KaitaiStream(this._raw_body);
-    //             this.body = new BodySequence(_io__raw_body, this, this._root);
-    //             break;
-    //         case Asn1Der.TypeTag.SET:
-    //             this._raw_body = this._io.readBytes(this.len.result);
-    //             var _io__raw_body = new KaitaiStream(this._raw_body);
-    //             this.body = new BodySequence(_io__raw_body, this, this._root);
-    //             break;
-    //
-    //          */
-    //         case Asn1Der.TypeTag.SEQUENCE_30:
-    //             this._raw_body = this._io.splice(0,this.len.result);
-    //             // var _io__raw_body = new KaitaiStream(this._raw_body);
-    //             // this.body = new BodySequence(_io__raw_body, this, this._root);
-    //             this.body = (new BodySequence(this._raw_body)).entries;
-    //             break;
-    //         /*
-    //     case Asn1Der.TypeTag.UTF8STRING:
-    //         this._raw_body = this._io.readBytes(this.len.result);
-    //         var _io__raw_body = new KaitaiStream(this._raw_body);
-    //         this.body = new BodyUtf8string(_io__raw_body, this, this._root);
-    //         break;
-    //     case Asn1Der.TypeTag.OBJECT_ID:
-    //         this._raw_body = this._io.readBytes(this.len.result);
-    //         var _io__raw_body = new KaitaiStream(this._raw_body);
-    //         this.body = new BodyObjectId(_io__raw_body, this, this._root);
-    //         break;
-    //
-    //          */
-    //         default:
-    //             this.body = this._io.splice(0,this.len.result);
-    //             break;
-    //     }
-    //     console.log(this.body);
-    // }
+    decode(byteArray: Uint8Array) {
+        let arr = Array.from(byteArray);
+        return this.read(arr);
+    }
 
-    // var BodySequence = Asn1Der.BodySequence = (function() {
-    //     // function BodySequence(_io, _parent, _root) {
-    //     function BodySequence(_io) {
-    //         this._io = _io;
-    //         // this._parent = _parent;
-    //         // this._root = _root || this;
-    //
-    //         this._read();
-    //     }
-    //     BodySequence.prototype._read = function() {
-    //         this.entries = [];
-    //         var i = 0;
-    //         while (this._io.length) {
-    //             this.entries.push( (new Asn1Der(this._io)).body );
-    //             i++;
-    //         }
-    //     }
-    //
-    //     return BodySequence;
-    // })();
+    lenEncoded(derArr: number[]) {
+        console.log("derArr in lenEncoded = ", derArr);
+        let b1 = derArr.shift();
+        if (b1 < 128) {
+            console.log("b1 < 128 ; b1 = " + b1);
+            return b1;
+        } else if (b1 > 128){
+            console.log("b1 > 128 ; b1 = " + b1);
+            let extLength = 0;
+            for (let i=0; i<(b1-128);i++){
+                console.log("b1 > 128 ; b1 = " + b1);
+                extLength = (extLength << 8) + derArr.shift();
+            }
+            return extLength;
+        } else if (b1 == 128) {
+            // TODO
+            throw new Error('have to code variable length')
+        }
+    }
+
+    readFromHexString(str: string) {
+        return this.read(hexStringToArray(str));
+    }
+
+    readFromUint8Array(u8: Uint8Array) {
+        return this.read(Array.from(u8));
+    }
+
+    read(derArr: number[]) {
+        console.log("derArr start to read = ", derArr);
+        let typeTag:number = derArr.shift();
+        let len:number = this.lenEncoded(derArr);
+        // console.log("derArr after lenEncoded = ", derArr);
+        let typeTagName:string = Asn1DerTagById[typeTag];
+        // let content: number[] = derArr.slice(0,len);
+        let content: number[] = [];
+        for (let i = 0; i < len; i++){
+            content.push(derArr.shift());
+        }
+        // derArr = derArr.slice(len);
+        console.log("typeTagName = ", typeTagName);
+        let outputStr = '';
+        switch (typeTagName) {
+            case "SEQUENCE_30":
+                return this.BodySequence(content);
+            case "INTEGER":
+            case "BIT_STRING":
+                let output = 0n;
+                while (content.length) {
+                    output = output << 8n;
+                    output += BigInt(content.shift());
+                }
+                return output;
+            case "OCTET_STRING":
+                while (content.length) {
+                    outputStr += content.shift().toString(16);
+                }
+                return outputStr;
+            case "GENERALIZED_TIME":
+            case "VISIBLE_STRING":
+                while (content.length) {
+                    outputStr += String.fromCharCode(content.shift());
+                }
+                return outputStr;
+        }
+    }
+
+    BodySequence(derArr: number[]): any {
+        let entries = [];
+        while (derArr.length) {
+            entries.push(this.read(derArr));
+        }
+        return entries;
+    }
+
 
     // var BodyUtf8string = Asn1Der.BodyUtf8string = (function() {
     //     function BodyUtf8string(_io, _parent, _root) {
-    //         this._io = _io;
-    //         this._parent = _parent;
-    //         this._root = _root || this;
-    //
     //         this._read();
     //     }
     //     BodyUtf8string.prototype._read = function() {
     //         this.str = KaitaiStream.bytesToStr(this._io.readBytesFull(), "UTF-8");
     //     }
-    //
     //     return BodyUtf8string;
     // })();
 
@@ -207,10 +207,6 @@ export class Asn1Der {
 
     // var BodyObjectId = Asn1Der.BodyObjectId = (function() {
     //     function BodyObjectId(_io, _parent, _root) {
-    //         this._io = _io;
-    //         this._parent = _parent;
-    //         this._root = _root || this;
-    //
     //         this._read();
     //     }
     //     BodyObjectId.prototype._read = function() {
@@ -237,36 +233,7 @@ export class Asn1Der {
     //     return BodyObjectId;
     // })();
 
-    // var LenEncoded = Asn1Der.LenEncoded = (function() {
-    //     function LenEncoded(_io, _parent, _root) {
-    //         this._io = _io;
-    //         this._parent = _parent;
-    //         this._root = _root || this;
-    //
-    //         this._read();
-    //     }
-    //     LenEncoded.prototype._read = function() {
-    //         this.b1 = this._io.shift();
-    //         if (this.b1 == 130) {
-    //             let bite1 = this._io.shift();
-    //             let bite2 = this._io.shift();
-    //             this.int2 = bite1 << 8 + bite2;
-    //         }
-    //         if (this.b1 == 129) {
-    //             this.int1 = this._io.shift();
-    //         }
-    //     }
-    //     Object.defineProperty(LenEncoded.prototype, 'result', {
-    //         get: function() {
-    //             if (this._m_result !== undefined)
-    //                 return this._m_result;
-    //             this._m_result = (this.b1 == 129 ? this.int1 : (this.b1 == 130 ? this.int2 : this.b1));
-    //             return this._m_result;
-    //         }
-    //     });
-    //
-    //     return LenEncoded;
-    // })();
+
 
     // var BodyPrintableString = Asn1Der.BodyPrintableString = (function() {
     //     function BodyPrintableString(_io, _parent, _root) {
