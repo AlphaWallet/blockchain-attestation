@@ -1,10 +1,4 @@
-import { stringToHex,hexStringToArray } from "./utils";
-
-export class DERUtility {
-    static restoreBase64Keys(der: string){
-
-    }
-}
+import {stringToHex, hexStringToArray, base64ToUint8array} from "./utils";
 
 const Asn1DerTagByType: {[index: string]:number} = {
     END_OF_CONTENT: 0,
@@ -116,16 +110,12 @@ export class Asn1Der {
     }
 
     lenEncoded(derArr: number[]) {
-        console.log("derArr in lenEncoded = ", derArr);
         let b1 = derArr.shift();
         if (b1 < 128) {
-            console.log("b1 < 128 ; b1 = " + b1);
             return b1;
         } else if (b1 > 128){
-            console.log("b1 > 128 ; b1 = " + b1);
             let extLength = 0;
             for (let i=0; i<(b1-128);i++){
-                console.log("b1 > 128 ; b1 = " + b1);
                 extLength = (extLength << 8) + derArr.shift();
             }
             return extLength;
@@ -143,19 +133,27 @@ export class Asn1Der {
         return this.read(Array.from(u8));
     }
 
+    readFromBase64String(base64str: string) {
+        return this.readFromUint8Array(base64ToUint8array(base64str));
+    }
+
+    readFromUrlBase64String(urlBase64str: string) {
+        let base64str = urlBase64str
+            .split('_').join('-')
+            .split('/').join('+')
+            .split('.').join('=');
+            // .replace('.','');
+        return this.readFromBase64String(base64str);
+    }
+
     read(derArr: number[]) {
-        console.log("derArr start to read = ", derArr);
         let typeTag:number = derArr.shift();
         let len:number = this.lenEncoded(derArr);
-        // console.log("derArr after lenEncoded = ", derArr);
         let typeTagName:string = Asn1DerTagById[typeTag];
-        // let content: number[] = derArr.slice(0,len);
         let content: number[] = [];
         for (let i = 0; i < len; i++){
             content.push(derArr.shift());
         }
-        // derArr = derArr.slice(len);
-        console.log("typeTagName = ", typeTagName);
         let outputStr = '';
         switch (typeTagName) {
             case "SEQUENCE_30":

@@ -1,5 +1,4 @@
 import { mod, invert, bnToBuf, uint8merge } from "./utils";
-import { CURVE } from "./interfaces";
 
 export class Point {
     static ZERO = new Point(0n, 0n); // Point at infinity aka identity point aka zero
@@ -101,3 +100,29 @@ export class Point {
         return BigInt(hex.join('')) % CURVE.n;
     }
 }
+
+export function getPublicKey(privKey: bigint): Point {
+    return G.multiplyDA(privKey);
+}
+// curve SECP256k1
+// export let CURVE = {
+//     P: 2n ** 256n - 2n ** 32n - 977n,
+//     n: 2n ** 256n - 432420386565659656852420866394968145599n,
+//     magicExp: (2n ** 256n - 2n ** 32n - 977n + 1n) / 4n,
+//     A: 0n,
+//     B: 7n
+// };
+// bn256
+export let CURVE = {
+    P: 115792089237314936872688561244471742058375878355761205198700409522629664518163n,
+    n: 115792089237314936872688561244471742058035595988840268584488757999429535617037n,
+    magicExp: 115792089237314936872688561244471742058375878355761205198700409522629664518164n >> 2n,
+    A: 0n,
+    B: 3n,
+    h: 1
+};
+
+// G x, y values taken from official secp256k1 document
+export const G = new Point(55066263022277343669578718895168534326250603453777594175500187360389116729240n,
+    32670510020758816978083085130507043184471273380659243275938904335757337482424n);
+
