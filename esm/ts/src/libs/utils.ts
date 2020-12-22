@@ -1,4 +1,4 @@
-import {CURVE} from "./interfaces";
+import {CURVE} from "./Point";
 
 export function stringToHex(str: string) {
     var hex = '';
@@ -112,4 +112,30 @@ export function base64ToUint8array( base64str: string ): Uint8Array {
         byteArray.push(asciiStr.charCodeAt(i));
     }
     return Uint8Array.from( byteArray );
+}
+
+export function stringToArray(str: string) {
+    var arr = [];
+    for(var i=0;i<str.length;i++) {
+        arr.push(str.charCodeAt(i));
+    }
+    return arr;
+}
+
+export function BnPowMod(base: bigint, n: bigint, mod: bigint) {
+    let res = 1n, cur = base;
+    while (n > 0n) {
+        if (n & 1n)
+            res = (res * cur) % mod;
+        cur = (cur * cur) % mod ;
+        n >>= 1n;
+    }
+    return res;
+}
+
+export function uint8tohex(uint8: Uint8Array): string {
+    // function i2hex(i) {
+    //     return ('0' + i.toString(16)).slice(-2);
+    // }
+    return Array.from(uint8).map(i => ('0' + i.toString(16)).slice(-2)).join('');
 }
