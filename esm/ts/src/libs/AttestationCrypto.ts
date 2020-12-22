@@ -35,11 +35,11 @@ export class AttestationCrypto {
     // TODO change arr type
     mapToInteger(type: string, arr: Uint8Array ):bigint {
         // add prefix [0,0,0,1] for email type
-        let prefix = type === "mail" ? [0,0,0,1] : [0,0,0,0];
-        return mod(BigInt('0x'+sha3.keccak256(uint8merge([Uint8Array.from(prefix),arr]))));
+        let prefix = [0,0,0,type === "mail" ? 0 : 1];
+        return mod(BigInt('0x'+sha3.keccak384(uint8merge([Uint8Array.from(prefix),arr]))));
     }
     mapToIntegerFromUint8(arr: Uint8Array ):bigint {
-        let idenNum = BigInt( '0x'+ sha3.keccak256(arr));
+        let idenNum = BigInt( '0x'+ sha3.keccak384(arr));
         return mod(idenNum);
     }
     /*
