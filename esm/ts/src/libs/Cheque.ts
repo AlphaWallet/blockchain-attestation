@@ -1,46 +1,58 @@
 import {keyPair} from "./interfaces";
 import {Asn1Der} from "./DerUtility";
 import { AttestationCrypto } from "./AttestationCrypto";
-import { uint8tohex } from "./utils";
+import {bufToBn, hexStringToArray, uint8tohex} from "./utils";
+import {KeyPair} from "./KeyPair";
+
+let sha3 = require("js-sha3");
 let EC = require("elliptic");
 let ec = new EC.ec('secp256k1');
 
 
 export class Cheque {
-    publicKey: bigint;
+    publicKey: string;
     riddle: Uint8Array;
     encoded: string;
     // TODO code it
-    constructor(private identifier: string, private type: string, private amount: number, private validity: number, private keys: keyPair, private secret: bigint) {}
+    constructor(private identifier: string, private type: string, private amount: number, private validity: number, private keys: KeyPair, private secret: bigint) {}
 
     createAndVerify(){
         let crypto = new AttestationCrypto();
         this.riddle = crypto.makeRiddle(this.identifier, this.type, this.secret);
-        // this.publicKey = this.keys.pub;
+
+        this.publicKey = this.keys.getPublicKeyAsHexStr();
         let current =  new Date().getTime() ;
         let notValidBefore = current - (current % 1000); // Round down to nearest second
         let notValidAfter = notValidBefore + this.validity * 1000;
         let cheque = this.makeCheque(notValidBefore, notValidAfter);
 
-        let ecKey = ec.keyFromPrivate(this.keys.priv);
-        var signature = ecKey.sign(cheque);
-        let pubPoint = ecKey.getPublic();
-        var pubPointHEX = pubPoint.getX().toString(16) + pubPoint.getY().toString(16);
+        let ecKey = ec.keyFromPrivate(this.keys.getPrivateAsHexString(), 'hex');
+        let chequeHash = sha3.keccak256(hexStringToArray(cheque));
+        var signature = ecKey.sign( chequeHash );
+        let pubPointHEX = this.keys.getPublicKeyAsHexStr();
 
-        let signatureHexDerDitString = Asn1Der.encode('BIT_STRING', signature.r.toString(16) + signature.s.toString(16));
+        // console.log("signature.toDER() = " + bufToBn(signature.toDER()).toString(16) );
+        // let signatureSequence = Asn1Der.encode('SEQUENCE_30',
+        //     Asn1Der.encode('INTEGER',signature.r) +
+        //     Asn1Der.encode('INTEGER',signature.s)
+        // );
+
+        // let signatureHexDerDitString = Asn1Der.encode('BIT_STRING', bufToBn(signature.toDER()).toString(16));
+        let signatureHexDerDitString = Asn1Der.encode('BIT_STRING', signature.toDER('hex'));
+        // console.log("signatureHexDerDitString = " + signatureHexDerDitString);
 
         this.encoded = this.encodeSignedCheque(
             cheque,
             signatureHexDerDitString,
             pubPointHEX);
 
-        let verify = ecKey.verify(cheque, signature);
+        let verify = ecKey.verify(chequeHash, signature);
         // console.log('verify = ' + verify);
 
         if (!verify) {
             throw new Error("Public and private keys are incorrect");
         }
-        console.log(Asn1Der.encode('OCTET_STRING', this.secret.toString(16)));
+        // console.log(Asn1Der.encode('OCTET_STRING', this.secret.toString(16)));
         return {
             cheque,
             chequeEncoded: this.encoded,
@@ -59,6 +71,8 @@ export class Cheque {
             Asn1Der.encode('GENERALIZED_TIME', formatGeneralizedDateTime(notValidBefore)) +
             Asn1Der.encode('GENERALIZED_TIME', formatGeneralizedDateTime(notValidAfter));
         // console.log('timeList = ' + timeList);
+        // timeList = "180f32303230313232333039343033345a180f32303230313232333130343033345a";
+        timeList = "180F32303230313232343030313931375A180F32303230313232343031313931375A";
         let fullSequence =
             Asn1Der.encode('INTEGER', this.amount) +
             Asn1Der.encode('SEQUENCE_30', timeList) +
@@ -91,7 +105,7 @@ function formatGeneralizedDateTime(date: any):string {
         hour = '0' + hour;
     if (min.length < 2)
         min = '0' + min;
-    if (day.length < 2)
+    if (sec.length < 2)
         sec = '0' + sec;
 
     return [year, month, day, hour, min, sec].join('') + 'Z';
