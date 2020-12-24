@@ -8,8 +8,8 @@ module.exports = {
                 test: /\.tsx?$/,
                 use: 'ts-loader',
                 exclude: /node_modules/,
-            },
-        ],
+            }
+            ]
     },
     resolve: {
         extensions: [ '.tsx', '.ts', '.js' ],
@@ -18,4 +18,10 @@ module.exports = {
         filename: 'bundle.js',
         path: path.resolve(__dirname, 'dist'),
     },
+    watch: true,
+    watchOptions: {
+        aggregateTimeout: 200,
+        poll: 1000,
+        ignored: /node_modules/
+    }
 };

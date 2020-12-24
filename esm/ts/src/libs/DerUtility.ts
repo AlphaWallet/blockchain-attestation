@@ -73,13 +73,18 @@ export class Asn1Der {
                 encValue = stringToHex(value);
                 break;
             case 'INTEGER':
-                encValue = parseInt(value).toString(16);
+                encValue = BigInt(value).toString(16);
                 encValue = (encValue.length % 2 ? '0' : '') + encValue;
+                if (parseInt('0x'+encValue.slice(0,1), 16) > 7) {
+                    encValue = '00' + encValue;
+                }
                 break;
             case "SEQUENCE_30":
             case "OCTET_STRING":
-            case "BIT_STRING":
                 encValue = value;
+                break;
+            case "BIT_STRING":
+                encValue = '00' + value;
                 break;
         }
 
@@ -150,10 +155,13 @@ export class Asn1Der {
         let typeTag:number = derArr.shift();
         let len:number = this.lenEncoded(derArr);
         let typeTagName:string = Asn1DerTagById[typeTag];
+        // console.log(typeTagName);
         let content: number[] = [];
+
         for (let i = 0; i < len; i++){
             content.push(derArr.shift());
         }
+        // console.log(content);
         let outputStr = '';
         switch (typeTagName) {
             case "SEQUENCE_30":
@@ -168,7 +176,7 @@ export class Asn1Der {
                 return output;
             case "OCTET_STRING":
                 while (content.length) {
-                    outputStr += content.shift().toString(16);
+                    outputStr += content.shift().toString(16).padStart(2,'0');
                 }
                 return outputStr;
             case "GENERALIZED_TIME":

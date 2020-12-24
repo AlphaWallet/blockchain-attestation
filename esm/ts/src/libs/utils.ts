@@ -1,4 +1,4 @@
-import {CURVE} from "./Point";
+import {CURVE_SECP256k1} from "./Point";
 
 export function stringToHex(str: string) {
     var hex = '';
@@ -21,12 +21,12 @@ export function hexStringToArray(str: string) {
     return arr;
 }
 
-export function mod(a: bigint, b: bigint = CURVE.P): bigint {
+export function mod(a: bigint, b: bigint = CURVE_SECP256k1.P): bigint {
     const result = a % b;
     return result >= 0 ? result : b + result;
 }
 
-export function invert(number: bigint, modulo: bigint = CURVE.P) {
+export function invert(number: bigint, modulo: bigint = CURVE_SECP256k1.P) {
     if (number === 0n || modulo <= 0n) {
         throw new Error('invert: expected positive integers');
     }
@@ -134,8 +134,5 @@ export function BnPowMod(base: bigint, n: bigint, mod: bigint) {
 }
 
 export function uint8tohex(uint8: Uint8Array): string {
-    // function i2hex(i) {
-    //     return ('0' + i.toString(16)).slice(-2);
-    // }
     return Array.from(uint8).map(i => ('0' + i.toString(16)).slice(-2)).join('');
 }
