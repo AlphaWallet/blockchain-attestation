@@ -1,11 +1,12 @@
 import { Asn1Der } from "./libs/DerUtility";
 import { AttestationRequest } from "./libs/AttestationRequest";
 import { AttestationCrypto } from "./libs/AttestationCrypto";
-import { keyPair } from "./libs/interfaces";
+import {ATTESTATION_TYPE, keyPair} from "./libs/interfaces";
 import { Cheque } from "./libs/Cheque";
 import { ProofOfExponent } from "./libs/ProofOfExponent";
 import {hexStringToArray} from "./libs/utils";
 import {KeyPair} from "./libs/KeyPair";
+import {IdentifierAttestation} from "./libs/IdentifierAttestation";
 const ASN1 = require('@lapo/asn1js');
 // const Hex = require('@lapo/asn1js/hex');
 
@@ -38,8 +39,8 @@ class main {
 
     requestAttest(receiverId: string, type: string, keys: KeyPair) {
         let secret: bigint = this.crypto.makeSecret();
-        let pok:ProofOfExponent = this.crypto.constructProof(receiverId, type, secret);
-        let request = AttestationRequest.fromData(receiverId, type, pok.encoding, keys);
+        let pok:ProofOfExponent = this.crypto.constructProof(receiverId, ATTESTATION_TYPE[type], secret);
+        let request = AttestationRequest.fromData(receiverId, ATTESTATION_TYPE[type], pok, keys);
         return {
             request: request.getDerEncoding(),
             requestSignature: request.signature,
@@ -47,20 +48,23 @@ class main {
         }
     }
 
-    constructAttest( keys: KeyPair, issuerName: string, validityInMilliseconds: number, requestBytesDehHexStr: string): string {
+    constructAttest( keys: KeyPair, issuerName: string, validityInMilliseconds: number, requestBytesDehHexStr: string): any {
         console.log("Signing attestation...");
 
         let attestRequest = AttestationRequest.fromBytes(Uint8Array.from(hexStringToArray(requestBytesDehHexStr)));
 
-        // if (!request.checkValidity()) {
-        //     console.log("Could not validate attestation signing request");
-        //     throw new Error("Validation failed");
-        // }
-        // if (!request.verify()) {
-        //     System.err.println("Could not verify attestation signing request");
-        //     throw new Error("Validation failed");
-        // }
-        // let att = new IdentifierAttestation(request.getIdentity(), request.getType(), request.getPok().getRiddle().getEncoded(false), request.getPublicKey());
+        let verify = 'Verify attestation signing request ' + ( attestRequest.verify() ? 'OK' : 'failed');
+
+        let checkValidity = 'Validate attestation signing request ' + ( attestRequest.checkValidity() ? 'OK' : 'failed') ;
+
+        console.log('verify = ' + verify);
+        console.log('checkValidity = ' + checkValidity);
+        return {
+            verify,
+            checkValidity
+        }
+
+        // let att = new IdentifierAttestation(attestRequest.getPok().getRiddle().getEncoded(false), attestRequest.getKeys());
         // att.setIssuer("CN=" + issuerName);
         // att.setSerialNumber(new Random().nextLong());
         // Date now = new Date();
@@ -71,7 +75,7 @@ class main {
         //     System.err.println("Could not write attestation to disc");
         //     throw new IOException("Could not write file");
         // }
-        return '';
+        // return '';
     }
 
     // receiveCheque(userKeysDER: string, chequeSecret: string, attestationSecret: string, cheque: string, attestation: string, attestorKey: string){

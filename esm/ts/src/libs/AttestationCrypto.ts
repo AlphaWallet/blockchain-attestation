@@ -1,21 +1,19 @@
 import {ATTESTATION_TYPE} from "./interfaces";
-import {Point, CURVE_SECP256k1, CURVE_BN256} from "./Point";
+import {Point, CURVE_BN256} from "./Point";
 import {
     mod,
     uint8merge,
     stringToArray,
-    BnPowMod,
-    uint8tohex,
-    bufToBn,
-    base64ToUint8array,
-    hexStringToArray
+    BnPowMod, hexStringToArray
 } from "./utils";
 import {ProofOfExponent } from "./ProofOfExponent";
+import {KeyPair} from "./KeyPair";
 
 let sha3 = require("js-sha3");
 
 export class AttestationCrypto {
     rand: bigint;
+    static OID_SIGNATURE_ALG: string = "1.2.840.10045.2.1";
     constructor() {
         this.rand = this.makeSecret();
         if (mod(CURVE_BN256.P,4n) != 3n) {
@@ -32,20 +30,21 @@ export class AttestationCrypto {
                 throw new Error("Wrong type of identifier");
         }
     }
-    makeRiddle(identity: string, type: string, secret: bigint) {
+    makeRiddle(identity: string, type: number, secret: bigint) {
         let hashedIdentity = this.hashIdentifier(type, identity);
         return hashedIdentity.multiplyDA(secret).getEncoded(false);
     }
     // TODO use type
-    hashIdentifier(type: string , identity: string): Point {
+    hashIdentifier(type: number , identity: string): Point {
         let idenNum = this.mapToInteger(type, Uint8Array.from(stringToArray(identity.trim().toLowerCase())));
         // console.log(`idenNum(for base point) = ${idenNum}`);
         return this.computePoint_bn256(idenNum);
     }
+
     // TODO change arr type
-    mapToInteger(type: string, arr: Uint8Array ):bigint {
+    mapToInteger(type: number, arr: Uint8Array ):bigint {
         // add prefix [0,0,0,1] for email type
-        let prefix = [0,0,0,ATTESTATION_TYPE[type]];
+        let prefix = [0,0,0,type];
         let uintArr = uint8merge([Uint8Array.from(prefix),arr]);
         return this.mapToIntegerFromUint8(uintArr);
 
@@ -134,7 +133,7 @@ export class AttestationCrypto {
         }
         return mod(BigInt(output));
     }
-    constructProof(identity: string, type: string, secret: bigint){
+    constructProof(identity: string, type: number, secret: bigint){
         const hashedIdentity: Point = this.hashIdentifier(type, identity);
         // console.log(`hashedIdentity = (${hashedIdentity.x}, ${hashedIdentity.y})`);
         const identifier = hashedIdentity.multiplyDA(secret);
@@ -146,7 +145,7 @@ export class AttestationCrypto {
         let t: Point = base.multiplyDA(r);
         // TODO ideally Bob's ethreum address should also be part of the challenge
         let c: bigint = mod(this.mapToIntegerFromUint8(this.makeArray([base, riddle, t])), CURVE_BN256.n);
-        let d: bigint = mod(r + c * exponent);
+        let d: bigint = mod(r + c * exponent, CURVE_BN256.n);
         return  new ProofOfExponent(base, riddle, t, d);
     }
     makeArray(pointArray: Point[]): Uint8Array{
@@ -164,8 +163,13 @@ export class AttestationCrypto {
         // console.log(`c = ( ${c} )`);
         let lhs: Point = pok.getBase().multiplyDA(pok.getChallenge());
         let rhs: Point = pok.getRiddle().multiplyDA(c).add(pok.getPoint());
-        console.log(`Point lhs = ( ${lhs.x} , ${lhs.y})`);
-        console.log(`Point rhs = ( ${rhs.x} , ${rhs.y})`);
+        // console.log(`Point lhs = ( ${lhs.x} , ${lhs.y})`);
+        // console.log(`Point rhs = ( ${rhs.x} , ${rhs.y})`);
         return lhs.equals(rhs);
+    }
+    addressFromKey(key: KeyPair){
+        let pubKey = key.getPublicKeyAsHexStr();
+        let pubKeyHash = sha3.keccak256(hexStringToArray(pubKey));
+        return '0x' + pubKeyHash.slice(-40).toUpperCase();
     }
 }

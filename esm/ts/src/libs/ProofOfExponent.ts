@@ -19,6 +19,7 @@ export class ProofOfExponent {
         if (!me.verify()) {
             throw new Error("The proof is not valid");
         }
+        return me;
     }
     verify(): boolean{
         let crypto = new AttestationCrypto();
