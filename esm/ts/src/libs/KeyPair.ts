@@ -11,6 +11,7 @@ const G = new Point(550662630222773436695787188951685343262506034537775941755001
 export class KeyPair {
     private constructor() {}
     private privateInHex: string;
+    private publicInHex: string;
     getPrivateAsHexString(): string{
         return this.privateInHex;
     }
@@ -25,6 +26,20 @@ export class KeyPair {
     static privateFromHex(priv: string): KeyPair {
         let me = new this();
         me.privateInHex = priv.padStart(64, '0');
+        return me;
+    }
+    // hex string 129-130 symbols with leading 04 (it means uncompressed)
+    // TODO test if correct input string
+    static fromPublicHex(publicHex: string){
+        if (publicHex.length < 129 || publicHex.length > 130) {
+            throw new Error('Wrong public hex length');
+        }
+        let me = new this();
+        // console.log(publicHex);
+        // console.log(typeof publicHex);
+        // console.log(publicHex.padStart(130, '0'));
+        // console.log("publicHex.padStart(130, '0')");
+        me.publicInHex = publicHex.padStart(130, '0');
         return me;
     }
     static privateFromAsn1base64(base64: string): KeyPair {
@@ -88,8 +103,12 @@ export class KeyPair {
     }
 
     getPublicKeyAsHexStr(): string {
-        let pubPoint = G.multiplyDA(this.getPrivateAsBigInt());
-        // prefix 04 means it is uncompressed key
-        return '04' + pubPoint.x.toString(16).padStart(64, '0') + pubPoint.y.toString(16).padStart(64, '0')
+        if (this.publicInHex) {
+            return this.publicInHex;
+        } else {
+            let pubPoint = G.multiplyDA(this.getPrivateAsBigInt());
+            // prefix 04 means it is uncompressed key
+            return '04' + pubPoint.x.toString(16).padStart(64, '0') + pubPoint.y.toString(16).padStart(64, '0')
+        }
     }
 }

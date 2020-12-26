@@ -64,6 +64,13 @@ const Asn1DerTagById: {[index: number]:string} = {
 }
 
 export class Asn1Der {
+    static encodeAsInteger(value: bigint) {
+        return this.encode('INTEGER', value);
+    }
+    // static encodeAsInteger(value: bigint) {
+    //     return this.encode('INTEGER', value);
+    // }
+
     static encode(type: string, value: any) {
         let encType: number = Asn1DerTagByType[type];
         let encValue = '';

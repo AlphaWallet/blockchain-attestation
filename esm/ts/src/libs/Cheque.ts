@@ -1,4 +1,4 @@
-import {keyPair} from "./interfaces";
+import {ATTESTATION_TYPE, keyPair} from "./interfaces";
 import {Asn1Der} from "./DerUtility";
 import { AttestationCrypto } from "./AttestationCrypto";
 import {bufToBn, hexStringToArray, uint8tohex} from "./utils";
@@ -18,7 +18,7 @@ export class Cheque {
 
     createAndVerify(){
         let crypto = new AttestationCrypto();
-        this.riddle = crypto.makeRiddle(this.identifier, this.type, this.secret);
+        this.riddle = crypto.makeRiddle(this.identifier, ATTESTATION_TYPE[this.type], this.secret);
 
         this.publicKey = this.keys.getPublicKeyAsHexStr();
         let current =  new Date().getTime() ;
@@ -71,8 +71,6 @@ export class Cheque {
             Asn1Der.encode('GENERALIZED_TIME', formatGeneralizedDateTime(notValidBefore)) +
             Asn1Der.encode('GENERALIZED_TIME', formatGeneralizedDateTime(notValidAfter));
         // console.log('timeList = ' + timeList);
-        // timeList = "180f32303230313232333039343033345a180f32303230313232333130343033345a";
-        timeList = "180F32303230313232343030313931375A180F32303230313232343031313931375A";
         let fullSequence =
             Asn1Der.encode('INTEGER', this.amount) +
             Asn1Der.encode('SEQUENCE_30', timeList) +

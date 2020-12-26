@@ -1,9 +1,9 @@
-import { keyPair } from "./interfaces";
+import { Point } from "./Point";
 import { Asn1Der } from "./DerUtility";
-import { ATTESTATION_TYPE } from "./interfaces";
 import {hexStringToArray} from "./utils";
 import {ProofOfExponent} from "./ProofOfExponent";
 import {KeyPair} from "./KeyPair";
+import {AttestationCrypto} from "./AttestationCrypto";
 
 let EC = require("elliptic");
 let ec = new EC.ec('secp256k1');
@@ -49,18 +49,18 @@ export interface derAttestRequest {
 */
 
 export class AttestationRequest {
-    signature: string;
+    public signature: string;
     private identity: string;
     private type: number;
-    private pok: string;
+    public pok: ProofOfExponent;
     private keys: KeyPair;
     constructor() {}
-    static fromData(identity: string, type: string, pok: string, keys: KeyPair): AttestationRequest {
+    static fromData(identity: string, type: number, pok: ProofOfExponent, keys: KeyPair): AttestationRequest {
         let me = new this();
-        me.create(identity, ATTESTATION_TYPE[type], pok, keys);
+        me.create(identity, type, pok, keys);
         return me;
     }
-    create(identity: string, type: number, pok: string, keys: KeyPair){
+    create(identity: string, type: number, pok: ProofOfExponent, keys: KeyPair){
         this.identity = identity;
         this.type = type;
         this.pok = pok;
@@ -71,11 +71,12 @@ export class AttestationRequest {
         let encodingHash = sha3.keccak256(hexStringToArray(this.getUnsignedEncoding()))
         let signature = ecKey.sign(encodingHash);
         this.signature = signature.toDER('hex');
+        console.log("signature = " + this.signature);
     }
     getUnsignedEncoding(){
         let res = Asn1Der.encode('VISIBLE_STRING',this.identity) +
             Asn1Der.encode('INTEGER',this.type) +
-            this.pok;
+            this.pok.encoding;
         return Asn1Der.encode('SEQUENCE_30',res);
     }
     getDerEncoding(){
@@ -94,7 +95,6 @@ export class AttestationRequest {
         return Asn1Der.encode('SEQUENCE_30', res);
     }
     static fromBytes(asn1: Uint8Array): AttestationRequest {
-        console.log("AttestationRequest fromBytes(asn1: Uint8Array)..");
         let me = new this();
 
         let mainSequence = ASN1.decode(asn1);
@@ -118,41 +118,65 @@ export class AttestationRequest {
         let challengeEnc = pokSequence.sub[2].content().replace(/\(.+\)\s+/,'');
         let tPointEnc = pokSequence.sub[3].content().replace(/\(.+\)\s+/,'');
 
-        console.log(`me.identity = ${me.identity}`);
-        console.log(`me.type = ${me.type}`);
-        console.log(`baseEnc = ${baseEnc}`);
-        console.log(`riddleEnc = ${riddleEnc}`);
-        console.log(`challengeEnc = ${challengeEnc}`);
-        console.log(`tPointEnc = ${tPointEnc}`);
-
-        console.log("lets do ProofOfExponent.fromArray..");
-        let pok = ProofOfExponent.fromArray(baseEnc,riddleEnc,challengeEnc,tPointEnc)
+        me.pok = ProofOfExponent.fromArray(baseEnc,riddleEnc,challengeEnc,tPointEnc)
 
         let pubKeySequence = mainSequence.sub[1];
-
-
         if (pubKeySequence.typeName() != "SEQUENCE" || pubKeySequence.sub.length != 2) {
             throw new Error('Wrong attestation format(pubKeySequence)');
         }
 
         let publicKeyDerHex = pubKeySequence.sub[1].toHexString();
-        // console.log(`publicKeyDerHex = ${publicKeyDerHex}`);
         let publicKey = (new Asn1Der()).decode(Uint8Array.from(hexStringToArray(publicKeyDerHex)));
+        me.keys = KeyPair.fromPublicHex(publicKey.toString(16));
 
         let signatureDerHex = mainSequence.sub[2].toHexString();
-        // console.log(`signatureBitStringHex = ${signatureDerHex}`);
-        let signature = (new Asn1Der()).decode(Uint8Array.from(hexStringToArray(signatureDerHex)));
+        let signatureAsBigInt = (new Asn1Der()).decode(Uint8Array.from(hexStringToArray(signatureDerHex)));
+        me.signature = signatureAsBigInt.toString(16);
 
-        console.log(`publicKey = ${publicKey}`);
-        console.log(`signature = ${signature}`);
-        console.log(`pokSequence = ${pokSequence}`);
-        (window as any).bit = UnsignedEncodingSequence.sub[2];
-
-        // if (!verify()) {
-        //     throw new IllegalArgumentException("The signature is not valid");
-        // }
+        if (!me.verify()) {
+            throw new Error("The signature is not valid");
+        }
 
         return me;
+    }
+    verify():boolean {
+        let ecKey = ec.keyFromPublic(this.keys.getPublicKeyAsHexStr(), 'hex');
+        let encodingHash = sha3.keccak256(hexStringToArray(this.getUnsignedEncoding()))
+        let signatureVerify = ecKey.verify(encodingHash, this.signature);
+
+        if (!signatureVerify) {
+            return false;
+        }
+        console.log('signatureVerify OK');
+
+        let AttestationCryptoInstance = new AttestationCrypto();
+        if (!AttestationCryptoInstance.verifyProof(this.pok)) {
+            return false;
+        }
+        console.log('verifyProof OK');
+
+        return true;
+    }
+    checkValidity(): boolean {
+        let crypto = new AttestationCrypto();
+        let rehashed:Point = crypto.hashIdentifier(this.type, this.identity);
+        if (!rehashed.equals(this.pok.getBase())) {
+            return false;
+        }
+        return true;
+    }
+
+    getPok(): ProofOfExponent{
+        return this.pok;
+    }
+    getIdentity(): string{
+        return this.identity;
+    }
+    getType(): number{
+        return this.type;
+    }
+    getKeys(): KeyPair{
+        return this.keys;
     }
 }
 
