@@ -39,7 +39,7 @@ class main {
 
     requestAttest(receiverId: string, type: string, keys: KeyPair) {
         let secret: bigint = this.crypto.makeSecret();
-        let pok:ProofOfExponent = this.crypto.constructProof(receiverId, ATTESTATION_TYPE[type], secret);
+        let pok:ProofOfExponent = this.crypto.computeAttestationProof(secret);
         let request = AttestationRequest.fromData(receiverId, ATTESTATION_TYPE[type], pok, keys);
         return {
             request: request.getDerEncoding(),
@@ -55,16 +55,17 @@ class main {
 
         let verify = 'Verify attestation signing request ' + ( attestRequest.verify() ? 'OK' : 'failed');
 
-        let checkValidity = 'Validate attestation signing request ' + ( attestRequest.checkValidity() ? 'OK' : 'failed') ;
+        // let checkValidity = 'Validate attestation signing request ' + ( attestRequest.checkValidity() ? 'OK' : 'failed') ;
 
         console.log('verify = ' + verify);
-        console.log('checkValidity = ' + checkValidity);
+        // console.log('checkValidity = ' + checkValidity);
         return {
             verify,
-            checkValidity
+            // checkValidity
         }
 
-        // let att = new IdentifierAttestation(attestRequest.getPok().getRiddle().getEncoded(false), attestRequest.getKeys());
+        // byte[] commitment = AttestationCrypto.makeCommitment(request.getIdentity(), request.getType(), request.getPok().getRiddle());
+        // Attestation att = new IdentifierAttestation(commitment, request.getPublicKey());
         // att.setIssuer("CN=" + issuerName);
         // att.setSerialNumber(new Random().nextLong());
         // Date now = new Date();
@@ -75,7 +76,6 @@ class main {
         //     System.err.println("Could not write attestation to disc");
         //     throw new IOException("Could not write file");
         // }
-        // return '';
     }
 
     // receiveCheque(userKeysDER: string, chequeSecret: string, attestationSecret: string, cheque: string, attestation: string, attestorKey: string){

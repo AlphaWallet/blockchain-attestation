@@ -4,12 +4,18 @@ import {
     mod,
     uint8merge,
     stringToArray,
-    BnPowMod, hexStringToArray
+    BnPowMod, hexStringToArray, uint8tohex
 } from "./utils";
 import {ProofOfExponent } from "./ProofOfExponent";
 import {KeyPair} from "./KeyPair";
 
 let sha3 = require("js-sha3");
+
+// Generator for message part of Pedersen commitments generated deterministically from mapToInteger queried on 0 and mapped to the curve using try-and-increment
+export const Pedestren_G = new Point(20000156897076804373511442327333074562530252705735619022974068652767906975443n, 16135862203487767418272788596559070291202237796623574414172670126674549722701n, CURVE_BN256);
+// Generator for randomness part of Pedersen commitments generated deterministically from  mapToInteger queried on 1 to the curve using try-and-increment
+export const Pedestren_H = new Point(85797412565613170319266654805631801108755836445783043049717719714755607913068n, 55241105687255465486443020367129718693309139166156194387150856583227301086165n, CURVE_BN256);
+
 
 export class AttestationCrypto {
     rand: bigint;
@@ -30,10 +36,37 @@ export class AttestationCrypto {
                 throw new Error("Wrong type of identifier");
         }
     }
-    makeRiddle(identity: string, type: number, secret: bigint) {
+    makeRiddle(identity: string, type: number, secret: bigint): Uint8Array {
         let hashedIdentity = this.hashIdentifier(type, identity);
         return hashedIdentity.multiplyDA(secret).getEncoded(false);
     }
+
+    /**
+     * Construct a Pedersen commitment to an identifier using a specific secret.
+     * @param identity The common identifier
+     * @param type The type of identifier
+     * @param secret The secret randomness to be used in the commitment
+     * @return
+     */
+    makeCommitment(identity: string, type: number, secret: bigint): Uint8Array {
+        let hiding:Point = Pedestren_H.multiplyDA(secret);
+        return this.makeCommitmentFromHiding(identity, type, hiding);
+    }
+    /**
+     * Constructs a commitment to an identity based on hidden randomization supplied from a user.
+     * This is used to construct an attestation.
+     * @param identity The user's identity.
+     * @param type The type of identity.
+     * @param hiding The hiding the user has picked
+     * @return
+     */
+    makeCommitmentFromHiding(identity: string, type: number, hiding: Point): Uint8Array {
+        let hashedIdentity:bigint = this.mapToIntegerIntString(type, identity);
+        // Construct Pedersen commitment
+        let commitment:Point = Pedestren_G.multiplyDA(hashedIdentity).add(hiding);
+        return commitment.getEncoded(false);
+    }
+
     // TODO use type
     hashIdentifier(type: number , identity: string): Point {
         let idenNum = this.mapToInteger(type, Uint8Array.from(stringToArray(identity.trim().toLowerCase())));
@@ -47,12 +80,19 @@ export class AttestationCrypto {
         let prefix = [0,0,0,type];
         let uintArr = uint8merge([Uint8Array.from(prefix),arr]);
         return this.mapToIntegerFromUint8(uintArr);
-
-        // return mod(BigInt('0x'+sha3.keccak384()),CURVE_BN256.P);
     }
+
+    mapToIntegerIntString(type: number, str: string ):bigint {
+        return this.mapToInteger(type, Uint8Array.from(stringToArray(str)));
+    }
+
     mapToIntegerFromUint8(arr: Uint8Array ):bigint {
-        let idenNum = BigInt( '0x'+ sha3.keccak384(arr));
-        return mod(idenNum, CURVE_BN256.P);
+        // let idenNum = BigInt( '0x'+ sha3.keccak384(arr));
+        // return mod(idenNum, CURVE_BN256.P);
+        let hash0: string = sha3.keccak256( uint8merge([Uint8Array.from([0]),arr]) );
+        let hash1: string = sha3.keccak256( uint8merge([Uint8Array.from([0]),arr]) );
+
+        return BigInt('0x' + hash0 + hash1);
     }
 
     // computePoint_SECP256k1( x: bigint ): Point {
@@ -140,7 +180,62 @@ export class AttestationCrypto {
         return this.computeProof(hashedIdentity, identifier, secret);
     }
 
-    computeProof(base: Point, riddle: Point, exponent: bigint){
+    /**
+     * Computes a proof of knowledge of a random exponent
+     * This is used to convince the attestor that the user knows a secret which the attestor will
+     * then use to construct a Pedersen commitment to the user's identifier.
+     * @param randomness The randomness used in the commitment
+     * @return
+     */
+    public computeAttestationProof(randomness: bigint): ProofOfExponent {
+    // Compute the random part of the commitment, i.e. H^randomness
+        let riddle: Point = Pedestren_H.multiplyDA(randomness);
+        let r: bigint = this.makeSecret();
+        let t:Point = Pedestren_H.multiplyDA(r);
+        let c:bigint = mod(this.mapToIntegerFromUint8(this.makeArray([Pedestren_G, Pedestren_H, riddle, t])) , CURVE_BN256.n);
+        let d:bigint = mod(r + c * randomness, CURVE_BN256.n);
+        return new ProofOfExponent(Pedestren_H, riddle, t, d);
+    }
+
+    /**
+     * Verifies a zero knowledge proof of knowledge of a riddle used in an attestation request
+     * @param pok The proof to verify
+     * @return True if the proof is OK and false otherwise
+     */
+    public verifyAttestationRequestProof(pok: ProofOfExponent): boolean  {
+        let c:bigint = mod(this.mapToIntegerFromUint8(this.makeArray([Pedestren_G, pok.getBase(), pok.getRiddle(), pok.getPoint()])),CURVE_BN256.n);
+        return this.verifyPok(pok, c);
+    }
+
+    /**
+     * Verifies a zero knowledge proof of knowledge of the two riddles used in two different
+     * commitments to the same message.
+     * This is used by the smart contract to verify that a request is ok where one commitment is the
+     * riddle for a cheque/ticket and the other is the riddle from an attesation.
+     * @param pok The proof to verify
+     * @return True if the proof is OK and false otherwise
+     */
+    public verifyEqualityProof(commitment1: Uint8Array, commitment2: Uint8Array, pok: ProofOfExponent): boolean  {
+        let comPoint1: Point = Point.decodeFromHex(uint8tohex(commitment1), CURVE_BN256);
+        let comPoint2: Point = Point.decodeFromHex(uint8tohex(commitment2), CURVE_BN256);
+        // Compute the value the riddle should have
+        let riddle: Point = comPoint1.subtract(comPoint2);
+        // Verify the proof matches the commitments
+        if (!riddle.equals(pok.getRiddle())) {
+            return false;
+        }
+        let c = mod(this.mapToIntegerFromUint8(this.makeArray([Pedestren_G, Pedestren_H, comPoint1, comPoint2, pok.getPoint()])), CURVE_BN256.n);
+    return this.verifyPok(pok, c);
+    }
+
+    private verifyPok(pok: ProofOfExponent, c: bigint): boolean {
+        let lhs: Point = pok.getBase().multiplyDA(pok.getChallenge());
+        let rhs: Point = pok.getRiddle().multiplyDA(c).add(pok.getPoint());
+        return lhs.equals(rhs);
+    }
+
+
+    computeProof(base: Point, riddle: Point, exponent: bigint): ProofOfExponent{
         let r: bigint = this.makeSecret();
         let t: Point = base.multiplyDA(r);
         // TODO ideally Bob's ethreum address should also be part of the challenge
