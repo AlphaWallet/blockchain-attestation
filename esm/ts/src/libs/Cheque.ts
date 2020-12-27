@@ -18,7 +18,8 @@ export class Cheque {
 
     createAndVerify(){
         let crypto = new AttestationCrypto();
-        this.riddle = crypto.makeRiddle(this.identifier, ATTESTATION_TYPE[this.type], this.secret);
+        // this.riddle = crypto.makeRiddle(this.identifier, ATTESTATION_TYPE[this.type], this.secret);
+        this.riddle = crypto.makeCommitment(this.identifier, ATTESTATION_TYPE[this.type], this.secret);
 
         this.publicKey = this.keys.getPublicKeyAsHexStr();
         let current =  new Date().getTime() ;

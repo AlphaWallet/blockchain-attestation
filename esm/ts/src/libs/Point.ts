@@ -124,6 +124,12 @@ export class Point {
             mod(this.y * this.y, this.useCurve.P)
             - mod(BnPowMod(this.x, 3n, this.useCurve.P) + this.x * this.useCurve.A + this.useCurve.B , this.useCurve.P) ) == 0n;
     }
+
+    negate(): Point {
+        return new Point(this.x, this.useCurve.P - this.y, this.useCurve);
+    }
+
+    subtract(anotherPoint: Point): Point {
+        return  this.add(anotherPoint.negate());
+    }
 }
-
-

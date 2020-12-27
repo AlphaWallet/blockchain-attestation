@@ -150,10 +150,14 @@ export class AttestationRequest {
         console.log('signatureVerify OK');
 
         let AttestationCryptoInstance = new AttestationCrypto();
-        if (!AttestationCryptoInstance.verifyProof(this.pok)) {
+        // if (!AttestationCryptoInstance.verifyProof(this.pok)) {
+        //     return false;
+        // }
+        if (!AttestationCryptoInstance.verifyAttestationRequestProof(this.pok)) {
             return false;
         }
-        console.log('verifyProof OK');
+
+        console.log('erifyAttestationRequestProof OK');
 
         return true;
     }

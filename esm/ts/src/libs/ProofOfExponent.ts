@@ -16,9 +16,10 @@ export class ProofOfExponent {
         let riddle = Point.decodeFromHex(riddleEnc, CURVE_BN256);
         let tPoint = Point.decodeFromHex(tPointEnc, CURVE_BN256);
         let me = new this(base, riddle, tPoint, BigInt('0x'+challengeEnc) );
-        if (!me.verify()) {
-            throw new Error("The proof is not valid");
-        }
+        me.encoding = me.makeEncoding();
+        // if (!me.verify()) {
+        //     throw new Error("The proof is not valid");
+        // }
         return me;
     }
     verify(): boolean{
