@@ -12,9 +12,13 @@ import {KeyPair} from "./KeyPair";
 let sha3 = require("js-sha3");
 
 // Generator for message part of Pedersen commitments generated deterministically from mapToInteger queried on 0 and mapped to the curve using try-and-increment
-export const Pedestren_G = new Point(20000156897076804373511442327333074562530252705735619022974068652767906975443n, 16135862203487767418272788596559070291202237796623574414172670126674549722701n, CURVE_BN256);
+// export const Pedestren_G = new Point(20000156897076804373511442327333074562530252705735619022974068652767906975443n, 16135862203487767418272788596559070291202237796623574414172670126674549722701n, CURVE_BN256);
+// Updated parameters #60
+export const Pedestren_G = new Point(12022136709705892117842496518378933837282529509560188557390124672992517127582n, 6765325636686621066142015726326349598074684595222800743368698766652936798612n, CURVE_BN256);
 // Generator for randomness part of Pedersen commitments generated deterministically from  mapToInteger queried on 1 to the curve using try-and-increment
-export const Pedestren_H = new Point(85797412565613170319266654805631801108755836445783043049717719714755607913068n, 55241105687255465486443020367129718693309139166156194387150856583227301086165n, CURVE_BN256);
+// export const Pedestren_H = new Point(85797412565613170319266654805631801108755836445783043049717719714755607913068n, 55241105687255465486443020367129718693309139166156194387150856583227301086165n, CURVE_BN256);
+// Updated parameters #60
+export const Pedestren_H = new Point(12263903704889727924109846582336855803381529831687633314439453294155493615168n, 1637819407897162978922461013726819811885734067940976901570219278871042378189n, CURVE_BN256);
 
 
 export class AttestationCrypto {
@@ -90,7 +94,7 @@ export class AttestationCrypto {
         // let idenNum = BigInt( '0x'+ sha3.keccak384(arr));
         // return mod(idenNum, CURVE_BN256.P);
         let hash0: string = sha3.keccak256( uint8merge([Uint8Array.from([0]),arr]) );
-        let hash1: string = sha3.keccak256( uint8merge([Uint8Array.from([0]),arr]) );
+        let hash1: string = sha3.keccak256( uint8merge([Uint8Array.from([1]),arr]) );
 
         return BigInt('0x' + hash0 + hash1);
     }
@@ -129,18 +133,19 @@ export class AttestationCrypto {
         let y = 0n, ySquare = 0n;
         let resPoint,referencePoint: Point;
         let quadraticResidue: bigint;
-
+        let magicExp = (fieldSize + 1n) >> 2n; // fieldSize + 1 / 4
         let quadraticResidueExp = (fieldSize - 1n) >> 1n;
+
         do {
             do {
-                x = mod(x + 1n, fieldSize);
+                x = mod(x + 1n);
                 // console.log('x = ' + x );
-                ySquare = mod(BnPowMod(x, 3n, fieldSize) + CURVE_BN256.A * x + CURVE_BN256.B, fieldSize);
+                ySquare = mod(BnPowMod(x, 3n, fieldSize) + CURVE_BN256.A * x + CURVE_BN256.B);
                 quadraticResidue = BnPowMod(ySquare, quadraticResidueExp, fieldSize);
             } while (quadraticResidue !== 1n);
             // We use the Lagrange trick to compute the squareroot (since fieldSize mod 4=3)
 
-            y = BnPowMod(ySquare, CURVE_BN256.magicExp, fieldSize);
+            y = BnPowMod(ySquare, magicExp, fieldSize);
             resPoint = new Point(x, y, CURVE_BN256);
             // Ensure that we have a consistent choice of which "sign" of y we use. We always use the smallest possible value of y
             if (resPoint.x > (fieldSize >> 1n)) {
@@ -171,7 +176,7 @@ export class AttestationCrypto {
         for (var i = 0; i < array.length; i++) {
             output += array[i].toString(16);
         }
-        return mod(BigInt(output));
+        return mod(BigInt(output), CURVE_BN256.n);
     }
     constructProof(identity: string, type: number, secret: bigint){
         const hashedIdentity: Point = this.hashIdentifier(type, identity);
@@ -204,6 +209,12 @@ export class AttestationCrypto {
      */
     public verifyAttestationRequestProof(pok: ProofOfExponent): boolean  {
         let c:bigint = mod(this.mapToIntegerFromUint8(this.makeArray([Pedestren_G, pok.getBase(), pok.getRiddle(), pok.getPoint()])),CURVE_BN256.n);
+
+        // Ensure that the right base has been used in the proof
+        if (!pok.getBase().equals(Pedestren_H)) {
+            return false;
+        }
+
         return this.verifyPok(pok, c);
     }
 
@@ -225,12 +236,19 @@ export class AttestationCrypto {
             return false;
         }
         let c = mod(this.mapToIntegerFromUint8(this.makeArray([Pedestren_G, Pedestren_H, comPoint1, comPoint2, pok.getPoint()])), CURVE_BN256.n);
-    return this.verifyPok(pok, c);
+
+        // Ensure that the right base has been used in the proof
+        if (!pok.getBase().equals(Pedestren_H)) {
+            return false;
+        }
+
+        return this.verifyPok(pok, c);
     }
 
     private verifyPok(pok: ProofOfExponent, c: bigint): boolean {
         let lhs: Point = pok.getBase().multiplyDA(pok.getChallenge());
         let rhs: Point = pok.getRiddle().multiplyDA(c).add(pok.getPoint());
+
         return lhs.equals(rhs);
     }
 
