@@ -3,10 +3,18 @@
              name="AttestationFramework"
              tagDefault="explicit">
 
- <import name="AuthenticationFramework"
+ <import name="AlgorithmIdentifier"
+         schemaLocation="AuthenticationFramework.asd"/>
+ <import name="Version"
+         schemaLocation="AuthenticationFramework.asd"/>
+ <import name="CertificateSerialNumber"
+         schemaLocation="AuthenticationFramework.asd"/>
+ <import name="Validity"
+         schemaLocation="AuthenticationFramework.asd"/>
+ <import name="Extensions"
          schemaLocation="AuthenticationFramework.asd"/>
 
- <import name="InformationFramework"
+ <import name="Name"
          schemaLocation="InformationFramework.asd"/>
 
  <namedType name="MyAttestation">

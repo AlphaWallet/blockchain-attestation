@@ -7,20 +7,15 @@ IMPORTS
     MyAttestation
         FROM AttestationFramework
     SignedDevconTicket
-        FROM SignedDevconTicket;
+        FROM SignedDevconTicket
+    Proof
+        FROM ProofOfExponent;
 
 UseDevconTicket ::= SEQUENCE {
     signedDevconTicket         SignedDevconTicket,
     attestation          MyAttestation,
     proof                Proof,
     signatureValue       BIT STRING
-}
-
-Proof ::= SEQUENCE {
-    base                 OCTET STRING,
-    riddle               OCTET STRING,
-    challengePoint       OCTET STRING,
-    responseValue        OCTET STRING
 }
 
 END

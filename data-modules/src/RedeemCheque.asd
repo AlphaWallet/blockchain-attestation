@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <asnx:module name="RedeemCheque" xmlns:asnx="urn:ietf:params:xml:ns:asnx">
-    <import name="SignedCheque"
-         schemaLocation="SignedCheque.asd"/>
     <import name="MyAttestation"
          schemaLocation="AttestationFramework.asd"/>
+    <import name="SignedCheque"
+         schemaLocation="SignedCheque.asd"/>
+    <import name="Proof"
+         schemaLocation="ProofOfExponent.asd"/>
     <namedType name="RedeemCheque">
         <type>
             <sequence>

@@ -2,7 +2,7 @@
 <asnx:module name="SignedTicket" xmlns:asnx="urn:ietf:params:xml:ns:asnx">
 <import name="AlgorithmIdentifier"
          schemaLocation="AuthenticationFramework.asd"/>
-    <namedType name="SignedDevoncTicket">
+    <namedType name="SignedDevconTicket">
         <type>
             <sequence>
                 <element name="ticket" type="DevconTicket">
@@ -14,7 +14,7 @@
             </sequence>
         </type>
     </namedType>
-    <namedType name="DevonTicket">
+    <namedType name="DevconTicket">
         <type>
             <sequence>
                 <element name="devconId" type="asnx:INTEGER"/>

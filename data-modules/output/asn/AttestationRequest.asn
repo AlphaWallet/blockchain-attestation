@@ -1,0 +1,26 @@
+AttestationRequest
+
+DEFINITIONS ::=
+BEGIN
+
+IMPORTS
+    SubjectPublicKeyInfo
+        FROM AttestationFramework
+    Proof
+        FROM ProofOfExponent;
+
+Identity ::= SEQUENCE {
+    unsignedIdentity   UnsignedIdentity,
+    publicKey          SubjectPublicKeyInfo,
+    signatureValue     BIT STRING
+}
+
+UnsignedIdentity ::= SEQUENCE {
+    identifier         VisibleString,
+    type               IdentifierType,
+    proof              Proof
+}
+		
+IdentifierType ::= INTEGER { email(0), phone(1)}
+
+END

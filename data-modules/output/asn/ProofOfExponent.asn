@@ -1,0 +1,13 @@
+ProofOfExponent
+
+DEFINITIONS ::=
+BEGIN
+
+Proof ::= SEQUENCE {
+    base                 OCTET STRING,
+    riddle               OCTET STRING,
+    challengePoint       OCTET STRING,
+    responseValue        OCTET STRING
+}
+
+END

@@ -7,7 +7,9 @@ IMPORTS
     MyAttestation
         FROM AttestationFramework
     SignedCheque
-        FROM SignedCheque;
+        FROM SignedCheque
+    Proof
+        FROM ProofOfExponent;
 
 RedeemCheque ::= SEQUENCE {
     signedCheque         SignedCheque,
@@ -15,14 +17,5 @@ RedeemCheque ::= SEQUENCE {
     proof                Proof,
     signatureValue       BIT STRING 
 }
-		
-
-Proof ::= SEQUENCE {
-    base                 OCTET STRING,
-    riddle               OCTET STRING,
-    challengePoint       OCTET STRING,
-    responseValue         OCTET STRING
-}
-		
 
 END
