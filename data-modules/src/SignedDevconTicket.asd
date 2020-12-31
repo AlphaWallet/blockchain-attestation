@@ -8,9 +8,14 @@
                 <element name="ticket" type="DevconTicket">
                     <annotation>The actual, unsigned, ticket object</annotation>
                 </element>
-                <element name="signatureAlgorithm" type="AlgorithmIdentifier"/>
-                <element name="signatureValue" type="asnx:BIT-STRING">
+                <element name="commitment" type="asnx:OCTET-STRING">
+                  <annotation>The elliptic curve point that is a commitment to the ticket holder's identity</annotation>
                 </element>
+                <!-- The algorithm and public key are optional since they will normally be internally defined from devconId -->
+                <optional>
+                  <element name="publicKeyInfo" type="PublicKeyInfo"/>
+                </optional>
+                <element name="signatureValue" type="asnx:BIT-STRING"/>
             </sequence>
         </type>
     </namedType>
@@ -20,10 +25,15 @@
                 <element name="devconId" type="asnx:INTEGER"/>
                 <element name="ticketId" type="asnx:INTEGER"/>
                 <element name="ticketClass" type="asnx:INTEGER"/>
-                <element name="riddle" type="asnx:OCTET-STRING">
-                    <annotation>The elliptic curve point that is the riddle</annotation>
-                </element>
             </sequence>
         </type>
+    </namedType>
+    <namedType name="PublicKeyInfo">
+      <type>
+        <sequence>
+          <element name="signatureAlgorithm" type="AlgorithmIdentifier"/>
+          <element name="publicKey" type="asnx:BIT-STRING"/>
+        </sequence>
+      </type>
     </namedType>
 </asnx:module>

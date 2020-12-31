@@ -16,7 +16,7 @@ SignedCheque ::= SEQUENCE {
 Cheque ::= SEQUENCE {
     amount         INTEGER,
     validity       ValidityValue,
-    riddle         OCTET STRING 
+    commitment     OCTET STRING
 }
 		
 

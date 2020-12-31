@@ -7,19 +7,25 @@ IMPORTS
 AlgorithmIdentifier FROM AuthenticationFramework;
 
 SignedDevconTicket ::= SEQUENCE {
-    ticket               DevconTicket,
-    signatureAlgorithm   AlgorithmIdentifier,
-    signatureValue       BIT STRING
+    ticket           DevconTicket,
+    commitment       OCTET STRING,
+--  The algorithm and public key are optional since they will normally be internally defined from devconId --
+    publicKeyInfo    PublicKeyInfo OPTIONAL,
+    signatureValue   BIT STRING
 }
 
 
 DevconTicket ::= SEQUENCE {
-    devconId     INTEGER,
+    devconId         INTEGER,
     ticketId         INTEGER,
     ticketClass      INTEGER,
 --  (currently not specified)      --
 --  co2_token         OCTET STRING --
-    riddle         OCTET STRING
+}
+
+PublicKeyInfo ::= SEQUENCE {
+    algorithm       AlgorithmIdentifier,
+    publicKey       BIT STRING
 }
 
 END

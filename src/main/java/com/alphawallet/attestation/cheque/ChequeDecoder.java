@@ -33,12 +33,12 @@ public class ChequeDecoder implements AttestableObjectDecoder<Cheque> {
       throw new IOException("Validity is not encoded properly");
     }
 
-    byte[] riddle = (ASN1OctetString.getInstance(cheque.getObjectAt(2))).getOctets();
+    byte[] commitment = (ASN1OctetString.getInstance(cheque.getObjectAt(2))).getOctets();
 
     AsymmetricKeyParameter publicKey = SignatureUtility.restoreKey(DERBitString.getInstance(asn1.getObjectAt(1)).getEncoded());
 
     // Verify signature
     byte[] signature = DERBitString.getInstance(asn1.getObjectAt(2)).getBytes();
-    return new Cheque(riddle, amount, notValidBefore, notValidAfter, signature, publicKey);
+    return new Cheque(commitment, amount, notValidBefore, notValidAfter, signature, publicKey);
   }
 }

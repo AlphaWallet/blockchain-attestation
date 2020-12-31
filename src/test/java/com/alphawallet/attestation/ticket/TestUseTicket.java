@@ -109,7 +109,7 @@ public class TestUseTicket {
     ASN1Sequence extensions = DERSequence
         .getInstance(newAttestedTicket.getAtt().getUnsignedAttestation().getExtensions().getObjectAt(0));
     byte[] attCom = ASN1OctetString.getInstance(extensions.getObjectAt(2)).getOctets();
-    assertTrue(AttestationCrypto.verifyEqualityProof(attCom, newAttestedTicket.getAttestableObject().getRiddle(), newAttestedTicket.getPok()));
+    assertTrue(AttestationCrypto.verifyEqualityProof(attCom, newAttestedTicket.getAttestableObject().getCommitment(), newAttestedTicket.getPok()));
 
     assertArrayEquals(attestedTicket.getAttestableObject().getDerEncoding(),
         newAttestedTicket.getAttestableObject().getDerEncoding());
@@ -178,7 +178,7 @@ public class TestUseTicket {
     byte[] attCom = ASN1OctetString.getInstance(extensions.getObjectAt(2)).getOctets();
     // Wrong attestation secret
     ProofOfExponent newPok = crypto
-        .computeEqualityProof(attCom, attestedTicket.getAttestableObject().getRiddle(), new BigInteger("42424242"), TICKET_SECRET);
+        .computeEqualityProof(attCom, attestedTicket.getAttestableObject().getCommitment(), new BigInteger("42424242"), TICKET_SECRET);
     Field field = attestedTicket.getClass().getDeclaredField("pok");
     field.setAccessible(true);
     // Change the proof

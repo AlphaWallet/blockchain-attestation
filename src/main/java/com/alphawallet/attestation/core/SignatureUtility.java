@@ -26,15 +26,24 @@ import org.bouncycastle.jcajce.provider.digest.Keccak.Digest256;
 
 public class SignatureUtility {
     /**
-     * Extract the public key from its DER encoded BITString
+     * Extract the ECDSA SECP256K1 public key from its DER encoded BITString
      * @param input
      * @return
      */
     public static AsymmetricKeyParameter restoreKey(byte[] input) throws IOException {
         AlgorithmIdentifier identifierEnc = new AlgorithmIdentifier(new ASN1ObjectIdentifier(
             AttestationCrypto.OID_SIGNATURE_ALG), AttestationCrypto.ECDSACurve.toASN1Primitive());
+        return restoreKey(identifierEnc, input);
+    }
+
+    /**
+     * Extract any public key from its DER encoded BITString and AlgorithmIdentifier
+     * @param input
+     * @return
+     */
+    public static AsymmetricKeyParameter restoreKey(AlgorithmIdentifier identifier, byte[] input) throws IOException {
         ASN1BitString keyEnc = DERBitString.getInstance(input);
-        ASN1Sequence spkiEnc = new DERSequence(new ASN1Encodable[] {identifierEnc, keyEnc});
+        ASN1Sequence spkiEnc = new DERSequence(new ASN1Encodable[] {identifier, keyEnc});
         SubjectPublicKeyInfo spki = SubjectPublicKeyInfo.getInstance(spkiEnc);
         return PublicKeyFactory.createKey(spki);
     }

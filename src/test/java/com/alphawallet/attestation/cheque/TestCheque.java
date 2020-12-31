@@ -37,13 +37,13 @@ public class TestCheque {
     assertTrue(cheque.checkValidity());
     assertArrayEquals(encoded, newCheque.getDerEncoding());
 
-    Cheque otherConstructor = new Cheque(newCheque.getRiddle(), newCheque.getAmount(),
+    Cheque otherConstructor = new Cheque(newCheque.getCommitment(), newCheque.getAmount(),
         newCheque.getNotValidBefore(), newCheque.getNotValidAfter(), newCheque.getSignature(),
         newCheque.getPublicKey());
     assertEquals(cheque.getAmount(), otherConstructor.getAmount());
     assertEquals(cheque.getNotValidBefore(), otherConstructor.getNotValidBefore());
     assertEquals(cheque.getNotValidAfter(), otherConstructor.getNotValidAfter());
-    assertArrayEquals(cheque.getRiddle(), otherConstructor.getRiddle());
+    assertArrayEquals(cheque.getCommitment(), otherConstructor.getCommitment());
     assertArrayEquals(cheque.getSignature(), otherConstructor.getSignature());
     SubjectPublicKeyInfo chequeSpki = SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(cheque.getPublicKey());
     SubjectPublicKeyInfo otherSpki = SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(otherConstructor.getPublicKey());

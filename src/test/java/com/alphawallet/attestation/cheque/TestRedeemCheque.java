@@ -102,7 +102,7 @@ public class TestRedeemCheque {
     assertTrue(newRedeem.getAtt().verify());
     ASN1Sequence extensions = DERSequence.getInstance(newRedeem.getAtt().getUnsignedAttestation().getExtensions().getObjectAt(0));
     byte[] attCom = ASN1OctetString.getInstance(extensions.getObjectAt(2)).getOctets();
-    assertTrue(AttestationCrypto.verifyEqualityProof(attCom, newRedeem.getAttestableObject().getRiddle(), newRedeem.getPok()));
+    assertTrue(AttestationCrypto.verifyEqualityProof(attCom, newRedeem.getAttestableObject().getCommitment(), newRedeem.getPok()));
 
     assertArrayEquals(
         attestedCheque.getAttestableObject().getDerEncoding(), newRedeem.getAttestableObject().getDerEncoding());

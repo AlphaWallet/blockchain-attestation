@@ -6,7 +6,6 @@ import com.alphawallet.attestation.core.AttestationCrypto;
 import com.alphawallet.attestation.core.SignatureUtility;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.security.SecureRandom;
 import java.util.Date;
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1EncodableVector;
@@ -22,7 +21,7 @@ import org.bouncycastle.crypto.params.AsymmetricKeyParameter;
 import org.bouncycastle.crypto.util.SubjectPublicKeyInfoFactory;
 
 public class Cheque implements Attestable {
-  private final byte[] riddle;
+  private final byte[] commitment;
   private final long amount;
   private final long notValidBefore;
   private final long notValidAfter;
@@ -41,13 +40,13 @@ public class Cheque implements Attestable {
    * @param secret the secret that must be known to cash the cheque
    */
   public Cheque(String identifier, AttestationType type, long amount, long validity, AsymmetricCipherKeyPair keys, BigInteger secret) {
-    this.riddle = AttestationCrypto.makeCommitment(identifier, type, secret);
+    this.commitment = AttestationCrypto.makeCommitment(identifier, type, secret);
     this.publicKey = keys.getPublic();
     this.amount = amount;
     long current =  System.currentTimeMillis();
     this.notValidBefore = current - (current % 1000); // Round down to nearest second
     this.notValidAfter = this.notValidBefore + validity;
-    ASN1Sequence cheque = makeCheque(this.riddle, amount, notValidBefore, notValidAfter);
+    ASN1Sequence cheque = makeCheque(this.commitment, amount, notValidBefore, notValidAfter);
     try {
       this.signature = SignatureUtility.signDeterministic(cheque.getEncoded(), keys.getPrivate());
       this.encoded = encodeSignedCheque(cheque, this.signature, this.publicKey);
@@ -59,8 +58,8 @@ public class Cheque implements Attestable {
     }
   }
 
-  public Cheque(byte[] riddle, long amount, long notValidBefore, long notValidAfter, byte[] signature, AsymmetricKeyParameter publicKey) {
-    this.riddle = riddle;
+  public Cheque(byte[] commitment, long amount, long notValidBefore, long notValidAfter, byte[] signature, AsymmetricKeyParameter publicKey) {
+    this.commitment = commitment;
     this.publicKey = publicKey;
     this.amount = amount;
     if (notValidBefore % 1000 != 0 || notValidAfter % 1000 != 0) {
@@ -69,7 +68,7 @@ public class Cheque implements Attestable {
     this.notValidBefore = notValidBefore;
     this.notValidAfter = notValidAfter;
     this.signature = signature;
-    ASN1Sequence cheque = makeCheque(this.riddle, amount, notValidBefore, notValidAfter);
+    ASN1Sequence cheque = makeCheque(this.commitment, amount, notValidBefore, notValidAfter);
     try {
       this.encoded = encodeSignedCheque(cheque, this.signature, this.publicKey);
     } catch (IOException e) {
@@ -80,7 +79,7 @@ public class Cheque implements Attestable {
     }
   }
 
-  private ASN1Sequence makeCheque(byte[] riddle, long amount, long notValidBefore, long notValidAfter) {
+  private ASN1Sequence makeCheque(byte[] commitment, long amount, long notValidBefore, long notValidAfter) {
     ASN1EncodableVector cheque = new ASN1EncodableVector();
     cheque.add(new ASN1Integer(amount));
 
@@ -89,7 +88,7 @@ public class Cheque implements Attestable {
     ASN1Sequence validityEnc = new DERSequence(new ASN1Encodable[] {notValidBeforeEnc, notValidAfterEnc});
     cheque.add(validityEnc);
 
-    cheque.add(new DEROctetString(riddle));
+    cheque.add(new DEROctetString(commitment));
 
     return new DERSequence(cheque);
   }
@@ -118,7 +117,7 @@ public class Cheque implements Attestable {
   @Override
   public boolean verify() {
     try {
-      ASN1Sequence cheque = makeCheque(this.riddle, this.amount, this.getNotValidBefore(),
+      ASN1Sequence cheque = makeCheque(this.commitment, this.amount, this.getNotValidBefore(),
           this.notValidAfter);
       return SignatureUtility.verify(cheque.getEncoded(), signature, this.publicKey);
     } catch (IOException e) {
@@ -132,8 +131,8 @@ public class Cheque implements Attestable {
   }
 
   @Override
-  public byte[] getRiddle() {
-    return riddle;
+  public byte[] getCommitment() {
+    return commitment;
   }
 
   public long getAmount() {

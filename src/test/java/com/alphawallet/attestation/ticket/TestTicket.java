@@ -51,21 +51,53 @@ public class TestTicket {
 
     Ticket newTicket = (new TicketDecoder(senderKeys.getPublic())).decode(encoded);
     assertTrue(ticket.verify());
+    assertTrue(newTicket.verify());
     assertArrayEquals(encoded, newTicket.getDerEncoding());
 
     Ticket otherConstructor = new Ticket(newTicket.getDevconId(), newTicket.getTicketId(), newTicket.getTicketClass(),
-        newTicket.getRiddle(), newTicket.getSignature(), newTicket.getPublicKey());
+        newTicket.getCommitment(), newTicket.getSignature(), newTicket.getPublicKey());
     assertEquals(ticket.getTicketId(), otherConstructor.getTicketId());
     assertEquals(ticket.getTicketClass(), otherConstructor.getTicketClass());
     assertEquals(ticket.getDevconId(), otherConstructor.getDevconId());
     assertEquals(ticket.getAlgorithm(), otherConstructor.getAlgorithm());
-    assertArrayEquals(ticket.getRiddle(), otherConstructor.getRiddle());
+    assertArrayEquals(ticket.getCommitment(), otherConstructor.getCommitment());
     assertArrayEquals(ticket.getSignature(), otherConstructor.getSignature());
     SubjectPublicKeyInfo ticketSpki = SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(ticket.getPublicKey());
     SubjectPublicKeyInfo otherSpki = SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(otherConstructor.getPublicKey());
     assertArrayEquals(ticketSpki.getEncoded(), otherSpki.getEncoded());
 
     assertArrayEquals(encoded, otherConstructor.getDerEncoding());
+  }
+
+  @Test
+  public void testFullDecodingWithPK() throws Exception {
+    Ticket ticket = new Ticket(MAIL, CONFERENCE_ID, TICKET_ID, TICKET_CLASS, senderKeys, SECRET);
+    byte[] encoded = ticket.getDerEncodingWithPK();
+    // write the ticket data
+    Files.write(new File(PREFIX + "signed-devcon-ticket.der").toPath(), encoded);
+
+    Ticket newTicket = (new TicketDecoder(senderKeys.getPublic())).decode(encoded);
+    assertTrue(ticket.verify());
+    assertTrue(newTicket.verify());
+    assertArrayEquals(encoded, newTicket.getDerEncodingWithPK());
+
+    Ticket otherConstructor = new Ticket(newTicket.getDevconId(), newTicket.getTicketId(), newTicket.getTicketClass(),
+        newTicket.getCommitment(), newTicket.getSignature(), newTicket.getPublicKey());
+    assertEquals(ticket.getTicketId(), otherConstructor.getTicketId());
+    assertEquals(ticket.getTicketClass(), otherConstructor.getTicketClass());
+    assertEquals(ticket.getDevconId(), otherConstructor.getDevconId());
+    assertEquals(ticket.getAlgorithm(), otherConstructor.getAlgorithm());
+    assertArrayEquals(ticket.getCommitment(), otherConstructor.getCommitment());
+    assertArrayEquals(ticket.getSignature(), otherConstructor.getSignature());
+    SubjectPublicKeyInfo ticketSpki = SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(ticket.getPublicKey());
+    SubjectPublicKeyInfo otherSpki = SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(otherConstructor.getPublicKey());
+    assertArrayEquals(ticketSpki.getEncoded(), otherSpki.getEncoded());
+
+    assertArrayEquals(encoded, otherConstructor.getDerEncodingWithPK());
+
+    Ticket noPKDecodingTicket = (new TicketDecoder()).decode(encoded);
+    assertTrue(noPKDecodingTicket.verify());
+    assertArrayEquals(encoded, noPKDecodingTicket.getDerEncodingWithPK());
   }
 
 
@@ -80,7 +112,7 @@ public class TestTicket {
     // Check we cannot make a new ticket with invalid signature
     try {
       Ticket newTicket = new Ticket(ticket.getDevconId(), ticket.getTicketId(), ticket.getTicketClass(),
-          ticket.getRiddle(), ticket.getSignature(),
+          ticket.getCommitment(), ticket.getSignature(),
           senderKeys.getPublic());
       fail();
     } catch (IllegalArgumentException e) {
@@ -90,6 +122,18 @@ public class TestTicket {
 
   @Test
   public void testWrongKey() throws Exception {
+    Ticket ticket = new Ticket(MAIL, CONFERENCE_ID, TICKET_ID, TICKET_CLASS, senderKeys, SECRET);
+    byte[] encoding = ticket.getDerEncodingWithPK();
+    try {
+      Ticket otherTicket = (new TicketDecoder(otherKeys.getPublic())).decode(encoding);
+      fail();
+    } catch (IllegalArgumentException e) {
+      // Expected
+    }
+  }
+
+  @Test
+  public void testWrongKeyNoPKArgument() throws Exception {
     Ticket ticket = new Ticket(MAIL, CONFERENCE_ID, TICKET_ID, TICKET_CLASS, senderKeys, SECRET);
     byte[] encoding = ticket.getDerEncoding();
     try {

@@ -6,7 +6,6 @@ import com.alphawallet.attestation.core.AttestationCrypto;
 import com.alphawallet.attestation.core.SignatureUtility;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.security.SecureRandom;
 import org.bouncycastle.asn1.ASN1EncodableVector;
 import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1Sequence;
@@ -39,7 +38,7 @@ public class Ticket implements Attestable {
   private final BigInteger ticketId;
   private TicketClass ticketClass = null;
   private final int devconId;
-  private final byte[] riddle;
+  private final byte[] commitment;
   private final AlgorithmIdentifier algorithm;
   private final byte[] signature;
 
@@ -60,7 +59,7 @@ public class Ticket implements Attestable {
     this.ticketId = ticketId;
     this.ticketClass = ticketClass;
     this.devconId = devconId;
-    this.riddle = AttestationCrypto.makeCommitment(mail, AttestationType.EMAIL, secret);
+    this.commitment = AttestationCrypto.makeCommitment(mail, AttestationType.EMAIL, secret);
     try {
       SubjectPublicKeyInfo spki = SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(
           keys.getPublic());
@@ -71,7 +70,7 @@ public class Ticket implements Attestable {
     ASN1Sequence asn1Tic = makeTicket();
     try {
       this.signature = SignatureUtility.signDeterministic(asn1Tic.getEncoded(), keys.getPrivate());
-      this.encoded = encodeSignedTicket(asn1Tic, algorithm, signature);
+      this.encoded = encodeSignedTicket(asn1Tic);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -81,11 +80,11 @@ public class Ticket implements Attestable {
     }
   }
 
-  public Ticket(int devconId, BigInteger ticketId, TicketClass ticketClass, byte[] riddle, byte[] signature, AsymmetricKeyParameter publicKey) {
+  public Ticket(int devconId, BigInteger ticketId, TicketClass ticketClass, byte[] commitment, byte[] signature, AsymmetricKeyParameter publicKey) {
     this.ticketId = ticketId;
     this.ticketClass = ticketClass;
     this.devconId = devconId;
-    this.riddle = riddle;
+    this.commitment = commitment;
     try {
       SubjectPublicKeyInfo spki = SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(
           publicKey);
@@ -96,7 +95,7 @@ public class Ticket implements Attestable {
     this.signature = signature;
     ASN1Sequence ticket = makeTicket();
     try {
-      this.encoded = encodeSignedTicket(ticket, this.algorithm, this.signature);
+      this.encoded = encodeSignedTicket(ticket);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -111,16 +110,33 @@ public class Ticket implements Attestable {
     ticket.add(new ASN1Integer(devconId));
     ticket.add(new ASN1Integer(ticketId));
     ticket.add(new ASN1Integer(ticketClass.getValue()));
-    ticket.add(new DEROctetString(riddle));
     return new DERSequence(ticket);
   }
 
-  private byte[] encodeSignedTicket(ASN1Sequence ticket, AlgorithmIdentifier algorithm, byte[] signature) throws IOException {
+  private byte[] encodeSignedTicket(ASN1Sequence ticket) throws IOException {
     ASN1EncodableVector signedTicket = new ASN1EncodableVector();
     signedTicket.add(ticket);
-    signedTicket.add(algorithm);
+    signedTicket.add(new DEROctetString(commitment));
     signedTicket.add(new DERBitString(signature));
     return new DERSequence(signedTicket).getEncoded();
+  }
+
+  public byte[] getDerEncodingWithPK() {
+    try {
+      ASN1Sequence ticket = makeTicket();
+      ASN1EncodableVector signedTicket = new ASN1EncodableVector();
+      signedTicket.add(ticket);
+      signedTicket.add(new DEROctetString(commitment));
+      ASN1EncodableVector publicKeyInfo = new ASN1EncodableVector();
+      SubjectPublicKeyInfo spki = SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(publicKey);
+      publicKeyInfo.add(spki.getAlgorithm());
+      publicKeyInfo.add(spki.getPublicKeyData());
+      signedTicket.add(new DERSequence(publicKeyInfo));
+      signedTicket.add(new DERBitString(signature));
+      return new DERSequence(signedTicket).getEncoded();
+    } catch (IOException e) {
+      throw new RuntimeException("Could not create public key info");
+    }
   }
 
   @Override
@@ -157,8 +173,8 @@ public class Ticket implements Attestable {
     return devconId;
   }
 
-  public byte[] getRiddle() {
-    return riddle;
+  public byte[] getCommitment() {
+    return commitment;
   }
 
   public AlgorithmIdentifier getAlgorithm() {

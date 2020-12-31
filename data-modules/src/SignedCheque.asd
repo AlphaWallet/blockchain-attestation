@@ -20,8 +20,8 @@
             <sequence>
                 <element name="amount" type="asnx:INTEGER"/>
                 <element name="validity" type="ValidityValue"/>
-                <element name="riddle" type="asnx:OCTET-STRING">
-                    <annotation>The elliptic curve point that is the riddle</annotation>
+                <element name="commitment" type="asnx:OCTET-STRING">
+                    <annotation>The elliptic curve point that is the commitment to the user's identifier</annotation>
                 </element>
             </sequence>
         </type>

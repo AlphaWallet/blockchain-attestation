@@ -51,7 +51,7 @@ public class TestURL {
     assertArrayEquals(cheque.getDerEncoding(), newCheque.getDerEncoding());
 
     AsymmetricKeyParameter newIssuerPublicKey = SignatureUtility.restoreKey(decoded.get(1));
-    Cheque otherConstructorCheque = new Cheque(newCheque.getRiddle(), newCheque.getAmount(),
+    Cheque otherConstructorCheque = new Cheque(newCheque.getCommitment(), newCheque.getAmount(),
         newCheque.getNotValidBefore(), newCheque.getNotValidAfter(), newCheque.getSignature(), newIssuerPublicKey);
     assertArrayEquals(cheque.getDerEncoding(), otherConstructorCheque.getDerEncoding());
   }
@@ -84,7 +84,7 @@ public class TestURL {
 
     AsymmetricKeyParameter newIssuerPublicKey = SignatureUtility.restoreKey(decoded.get(1));
     Ticket otherConstructorTicket = new Ticket(newTicket.getDevconId(), newTicket.getTicketId(), newTicket.getTicketClass(),
-        newTicket.getRiddle(), newTicket.getSignature(), newIssuerPublicKey);
+        newTicket.getCommitment(), newTicket.getSignature(), newIssuerPublicKey);
     assertArrayEquals(ticket.getDerEncoding(), otherConstructorTicket.getDerEncoding());
   }
 
