@@ -4,6 +4,7 @@ import com.alphawallet.attestation.IdentifierAttestation.AttestationType;
 import com.alphawallet.attestation.ProofOfExponent;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -205,7 +206,13 @@ public class AttestationCrypto {
 
   private static boolean verifyPok(ProofOfExponent pok, BigInteger c) {
     ECPoint lhs = pok.getBase().multiply(pok.getChallenge());
+    if (lhs.isInfinity()) {
+      return false;
+    }
     ECPoint rhs = pok.getRiddle().multiply(c).add(pok.getPoint());
+    if (rhs.isInfinity()) {
+      return false;
+    }
     return lhs.equals(rhs);
   }
 
@@ -235,7 +242,7 @@ public class AttestationCrypto {
    * TODO: Implement reference Barrett Reduction algorithm in Java to verify Solidity algorithm
    *       - Then we can revert to previous adjacent hash method
    */
-  private static BigInteger mapToInteger(byte[] value) {
+  public static BigInteger mapToInteger(byte[] value) {
     try {
       MessageDigest KECCAK = new Keccak.Digest256();
       KECCAK.reset();
@@ -246,10 +253,56 @@ public class AttestationCrypto {
       KECCAK.update((byte) 1); //probably don't need these additional inputs with the double hash
       KECCAK.update(hash0);
       byte[] hash1 = KECCAK.digest();
-      return new BigInteger(hash1);
+      byte[] res = new byte[48];
+      System.arraycopy(hash1, 0, res, 0, 16); // Use the first 128 bits
+      System.arraycopy(hash0, 0, res, 16, hash0.length);
+      // res now contains 48 bytes, where the first 16 are the most significant from hash1
+      // Note that we use double hashing to get a digest that is at least fieldSize or curve order
+      // + security parameter in length to avoid any potential bias
+      return new BigInteger(1, res);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
+  }
+
+  public static BigInteger barrettsMapToInteger(byte[] value) {
+    MessageDigest KECCAK = new Keccak.Digest256();
+    KECCAK.reset();
+    KECCAK.update((byte) 0);
+    KECCAK.update(value);
+    byte[] hash0 = KECCAK.digest();
+    KECCAK.reset();
+    KECCAK.update((byte) 1);
+    KECCAK.update(value);
+    byte[] hash1 = KECCAK.digest();
+    return barrettModCurveOrder(hash1, hash0);
+  }
+
+  // Assuming wordsize 8
+  // k = 15 since 8 * (15 + 1) = 256
+  // Computed as new BigDecimal("256").pow(2*31).divideToIntegralValue(new BigDecimal(curveOrder)).toBigIntegerExact();
+  private static final BigInteger MU = new BigInteger("9346886097317750151219352360153887284354127572198641262375670094198727134");
+
+  public static BigInteger barrettModCurveOrder(byte[] highestBits, byte[] lowestBits) {
+    BigInteger tempLow = new BigInteger(1, Arrays.copyOfRange(lowestBits, 0, 2)); // Take the two first bytes which are the most significant bits since BigIntger is big endian
+    BigInteger tempHigh = new BigInteger(1, Arrays.copyOfRange(highestBits, 0, 16)); // Use the first 128 bits
+    // q1 is the 18 most significant bytes of x = highest bits || lowestBits
+    BigInteger q1 = tempHigh.shiftLeft(2 * 8).add(tempLow); // Add the 2 most significant bytes of the lowestBits with the first 16 bytes of the highestBits
+    BigInteger q2 = q1.multiply(MU);
+    BigInteger q3 = q2.shiftRight(32 * 8); // the 256 most significant bits of q2
+    BigInteger r1 = new BigInteger(1, lowestBits);
+    byte[] tempArray = q3.multiply(curveOrder).toByteArray();
+    // r2Bytes is the 256 least significant bits of q3 * curveOrder
+    byte[] r2Bytes = Arrays.copyOfRange(tempArray, tempArray.length - 32, tempArray.length); // r1 * curveOrder mod 2^256
+    BigInteger r2 = new BigInteger(1, r2Bytes);
+    BigInteger r = r1.subtract(r2);
+    if (r.compareTo(BigInteger.ZERO) < 0) {
+      r = r.add(BigInteger.ONE.shiftLeft(8 * 32)); // r = r + 2^256
+    }
+    while (r.compareTo(curveOrder) > 0) {
+      r = r.subtract(curveOrder);
+    }
+    return r;
   }
 
   /**
