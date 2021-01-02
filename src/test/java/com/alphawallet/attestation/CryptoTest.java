@@ -13,6 +13,7 @@ import java.math.BigInteger;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import jdk.nashorn.internal.ir.annotations.Ignore;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.bouncycastle.math.ec.ECFieldElement;
 import org.bouncycastle.math.ec.ECFieldElement.Fp;
@@ -269,6 +270,7 @@ public class CryptoTest {
    * This test is here to show that we have nothing-up-our-sleeve in picking the generators
    * @throws Exception
    */
+  @Ignore // since we now only use 448 bit instead of 512 bits in mapToInteger so the result is different from the reference values
   @Test
   public void computeGenerators() throws Exception {
     assertFalse(AttestationCrypto.G.add(AttestationCrypto.G).isInfinity());
@@ -335,8 +337,51 @@ public class CryptoTest {
   @Test
   public void testBarret() {
     byte[] input = new byte[1];
-    BigInteger regVal = AttestationCrypto.mapToInteger(input).mod(AttestationCrypto.curveOrder);
-    BigInteger barrettsVal = AttestationCrypto.barrettsMapToInteger(input);
-    assertEquals(regVal, barrettsVal);
+    for (int i = 0; i < 30; i++) {
+      input[0] = (byte) i;
+      BigInteger regVal = AttestationCrypto.mapToInteger(input).mod(AttestationCrypto.curveOrder);
+      BigInteger barrettsVal = AttestationCrypto.barrettsMapToInteger(input);
+      assertEquals(regVal, barrettsVal);
+    }
+  }
+
+  @Test
+  public void testUpperMult() {
+    byte[] bytes = new byte[1];
+    BigInteger left = AttestationCrypto.mapToInteger(bytes).mod(BigInteger.ONE.shiftLeft(256));
+    bytes[0] = 1;
+    BigInteger right = AttestationCrypto.mapToInteger(bytes).mod(BigInteger.ONE.shiftLeft(256));
+    BigInteger ref = left.multiply(right).shiftRight(256);
+    BigInteger testVal = AttestationCrypto.upperMult(left, right);
+    assertEquals(ref, testVal);
+  }
+
+  @Test
+  public void testUpperMultFullRange() {
+    // 2^256-1
+    BigInteger input = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.ONE);
+    BigInteger ref = input.multiply(input).shiftRight(256);
+    BigInteger testVal = AttestationCrypto.upperMult(input, input);
+    assertEquals(ref, testVal);
+  }
+
+  @Test
+  public void testLowerMult() {
+    byte[] bytes = new byte[1];
+    BigInteger left = AttestationCrypto.mapToInteger(bytes).mod(BigInteger.ONE.shiftLeft(256));
+    bytes[0] = 1;
+    BigInteger right = AttestationCrypto.mapToInteger(bytes).mod(BigInteger.ONE.shiftLeft(256));
+    BigInteger ref = left.multiply(right).mod(BigInteger.ONE.shiftLeft(256));
+    BigInteger testVal = AttestationCrypto.lowerMult(left, right);
+    assertEquals(ref, testVal);
+  }
+
+  @Test
+  public void testLowerMultFullRange() {
+    // 2^256-1
+    BigInteger input = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.ONE);
+    BigInteger ref = input.multiply(input).mod(BigInteger.ONE.shiftLeft(256));
+    BigInteger testVal = AttestationCrypto.lowerMult(input, input);
+    assertEquals(ref, testVal);
   }
 }

@@ -2,6 +2,7 @@ package com.alphawallet.attestation.core;
 
 import com.alphawallet.attestation.IdentifierAttestation.AttestationType;
 import com.alphawallet.attestation.ProofOfExponent;
+import com.sun.org.apache.xerces.internal.impl.xs.SchemaGrammar.BuiltinSchemaGrammar;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -251,12 +252,12 @@ public class AttestationCrypto {
       byte[] hash0 = KECCAK.digest();
       KECCAK.reset();
       KECCAK.update((byte) 1); //probably don't need these additional inputs with the double hash
-      KECCAK.update(hash0);
+      KECCAK.update(value);
       byte[] hash1 = KECCAK.digest();
-      byte[] res = new byte[48];
-      System.arraycopy(hash1, 0, res, 0, 16); // Use the first 128 bits
-      System.arraycopy(hash0, 0, res, 16, hash0.length);
-      // res now contains 48 bytes, where the first 16 are the most significant from hash1
+      byte[] res = new byte[56];
+      System.arraycopy(hash1, 0, res, 0, 24); // Use the first 192 bits
+      System.arraycopy(hash0, 0, res, 24, hash0.length);
+      // res now contains 48 bytes, where the first 24 are the most significant from hash1
       // Note that we use double hashing to get a digest that is at least fieldSize or curve order
       // + security parameter in length to avoid any potential bias
       return new BigInteger(1, res);
@@ -282,27 +283,100 @@ public class AttestationCrypto {
   // k = 15 since 8 * (15 + 1) = 256
   // Computed as new BigDecimal("256").pow(2*31).divideToIntegralValue(new BigDecimal(curveOrder)).toBigIntegerExact();
   private static final BigInteger MU = new BigInteger("9346886097317750151219352360153887284354127572198641262375670094198727134");
+  private static final BigInteger twoTo128 = BigInteger.ONE.shiftLeft(128);
+  private static final BigInteger twoTo256 = BigInteger.ONE.shiftLeft(256);
 
   public static BigInteger barrettModCurveOrder(byte[] highestBits, byte[] lowestBits) {
     BigInteger tempLow = new BigInteger(1, Arrays.copyOfRange(lowestBits, 0, 2)); // Take the two first bytes which are the most significant bits since BigIntger is big endian
-    BigInteger tempHigh = new BigInteger(1, Arrays.copyOfRange(highestBits, 0, 16)); // Use the first 128 bits
-    // q1 is the 18 most significant bytes of x = highest bits || lowestBits
-    BigInteger q1 = tempHigh.shiftLeft(2 * 8).add(tempLow); // Add the 2 most significant bytes of the lowestBits with the first 16 bytes of the highestBits
-    BigInteger q2 = q1.multiply(MU);
-    BigInteger q3 = q2.shiftRight(32 * 8); // the 256 most significant bits of q2
+    BigInteger tempHigh = new BigInteger(1, Arrays.copyOfRange(highestBits, 0, 24)); // Use the first 128 bits
+    // q1 is the 24 most significant bytes of x = highest bits || lowestBits
+    BigInteger q1 = tempHigh.shiftLeft(2 * 8).add(tempLow); // Add the 2 most significant bytes of the lowestBits with the first 24 bytes of the highestBits
+    BigInteger q3 = upperMult(q1, MU); // the 256 most significant bits of q1 * MU
     BigInteger r1 = new BigInteger(1, lowestBits);
-    byte[] tempArray = q3.multiply(curveOrder).toByteArray();
-    // r2Bytes is the 256 least significant bits of q3 * curveOrder
-    byte[] r2Bytes = Arrays.copyOfRange(tempArray, tempArray.length - 32, tempArray.length); // r1 * curveOrder mod 2^256
-    BigInteger r2 = new BigInteger(1, r2Bytes);
+    BigInteger r2 = lowerMult(q3, curveOrder);
     BigInteger r = r1.subtract(r2);
     if (r.compareTo(BigInteger.ZERO) < 0) {
-      r = r.add(BigInteger.ONE.shiftLeft(8 * 32)); // r = r + 2^256
+      r = r.add(twoTo256); // r = r + 2^256
     }
     while (r.compareTo(curveOrder) > 0) {
       r = r.subtract(curveOrder);
     }
     return r;
+  }
+
+  /**
+   * Multiplies two 256 bit BigIntegers together and return the 256 bit most significant part of the 512 bit result.
+   * All BigIntegers in this method is at most 256 bits (unsigned)
+   */
+  public static BigInteger upperMult(BigInteger left, BigInteger right) {
+    if (left.compareTo(twoTo256) >= 0 || right.compareTo(twoTo256) >= 0) {
+      throw new IllegalArgumentException("Input too large for Karatsuba multiplication");
+    }
+    if (left.compareTo(twoTo128) <= 0 || right.compareTo(twoTo128) <= 0) {
+      throw new IllegalArgumentException("Input too small for Karatsuba multiplication");
+    }
+    BigInteger[] decomposedLeft = decompose(left);
+    BigInteger leftHigh = decomposedLeft[0];
+    BigInteger leftLow = decomposedLeft[1];
+    BigInteger[] decomposedRight = decompose(right);
+    BigInteger rightHigh = decomposedRight[0];
+    BigInteger rightLow = decomposedRight[1];
+
+    // See the base step of the Karatsuba multiplication algorithm
+    BigInteger z0 = leftLow.multiply(rightLow);
+    BigInteger z2 = leftHigh.multiply(rightHigh);
+    BigInteger z1 = (leftLow.add(leftHigh)).multiply(rightLow.add(rightHigh)).subtract(z2).subtract(z0);
+
+    // Compute bits 128 to 256 of the result. This is the 128 most significant bits of z0 added to the 128 least significant bits of z1
+    BigInteger sumz0z1 = z0.shiftRight(128).add(z1.mod(twoTo128));
+    // Compute the potential carry if this is larger than 2^128 which should be carried over
+    BigInteger lowCarry = sumz0z1.shiftRight(128);
+    // Note that we are adding a 1 bit and a 128 bit number to a 256 bit number but we know it won't overflow since it is the most significant 256 bits of the at most 512 bit result
+    BigInteger res = z1.shiftRight(128).add(z2).add(lowCarry);
+    return res;
+  }
+
+  /**
+   * Decomposes a 256 bit input into its least and most significant 128 bit parts in big endian order.
+   */
+  private static BigInteger[] decompose(BigInteger input) {
+    // The 128 least significant bits of input, equivalent to low = new BigInteger(1, Arrays.copyOfRange(input.toByteArray(), input.toByteArray().length - 16, input.toByteArray().length));
+    BigInteger low = input.mod(twoTo128);
+    // The 128 most significant bits of input, equivalent to high = new BigInteger(1, Arrays.copyOfRange(input.toByteArray(), 0, input.toByteArray().length - 16));
+    BigInteger high = input.shiftRight(128);
+    return new BigInteger[] {high, low};
+  }
+
+  /**
+   * Multiplies two 256 bit BigIntegers together and return the 256 bit least significant part of the 512 bit result.
+   * All BigIntegers in this method is at most 256 bits (unsigned)
+   */
+  public static BigInteger lowerMult(BigInteger left, BigInteger right) {
+    if (left.compareTo(twoTo256) >= 0 || right.compareTo(twoTo256) >= 0) {
+      throw new IllegalArgumentException("Input too large for Karatsuba multiplication");
+    }
+    if (left.compareTo(twoTo128) <= 0 || right.compareTo(twoTo128) <= 0) {
+      throw new IllegalArgumentException("Input too small for Karatsuba multiplication");
+    }
+    BigInteger[] decomposedLeft = decompose(left);
+    BigInteger leftHigh = decomposedLeft[0];
+    BigInteger leftLow = decomposedLeft[1];
+    BigInteger[] decomposedRight = decompose(right);
+    BigInteger rightHigh = decomposedRight[0];
+    BigInteger rightLow = decomposedRight[1];
+
+    // See the base step of the Karatsuba multiplication algorithm
+    BigInteger z0 = leftLow.multiply(rightLow);
+    BigInteger z2 = leftHigh.multiply(rightHigh);
+    BigInteger z1 = (leftLow.add(leftHigh)).multiply(rightLow.add(rightHigh)).subtract(z2).subtract(z0);
+
+    // Compute bits 128 to 256 of the result. This is the 128 most significant bits of z0 added to the 128 least significant bits of z1
+    BigInteger sumz0z1 = z0.shiftRight(128).add(z1.mod(twoTo128));
+    // Remove any potential; carry from the result
+    BigInteger sumWOCarry = sumz0z1.mod(twoTo128);
+    // Compute the result which is sumWOCarry << 128 plus the least significant 128 bits of z0
+    BigInteger res = sumWOCarry.shiftLeft(128).add(z0.mod(twoTo128));
+    return res;
   }
 
   /**
