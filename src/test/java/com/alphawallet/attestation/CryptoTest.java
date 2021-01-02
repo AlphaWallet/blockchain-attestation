@@ -331,4 +331,12 @@ public class CryptoTest {
     // Multiply with co-factor to ensure correct subgroup
     return resPoint.multiply(AttestationCrypto.cofactor).normalize();
   }
+
+  @Test
+  public void testBarret() {
+    byte[] input = new byte[1];
+    BigInteger regVal = AttestationCrypto.mapToInteger(input).mod(AttestationCrypto.curveOrder);
+    BigInteger barrettsVal = AttestationCrypto.barrettsMapToInteger(input);
+    assertEquals(regVal, barrettsVal);
+  }
 }
