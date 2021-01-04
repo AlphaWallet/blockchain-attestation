@@ -56,7 +56,7 @@ CgFCqStN
         writeToLog("derSecret : " + cheque.derSecret);
 
         let requestAttest = crypto.requestAttest('test@test.com', 'mail', aliceKeys);
-        console.log('requestAttest done');
+        // console.log('requestAttest done');
 
         writeToLog("Attest request : " + requestAttest.request);
         writeToLog("Attest request signature : " + requestAttest.requestSignature);

@@ -66,12 +66,11 @@ export class AttestationRequest {
         this.pok = pok;
         this.keys = keys;
 
-        console.log('requestAttest request ready');
         let ecKey = ec.keyFromPrivate(this.keys.getPrivateAsHexString(), 'hex');
         let encodingHash = sha3.keccak256(hexStringToArray(this.getUnsignedEncoding()))
         let signature = ecKey.sign(encodingHash);
         this.signature = signature.toDER('hex');
-        console.log("signature = " + this.signature);
+        // console.log("signature = " + this.signature);
     }
     getUnsignedEncoding(){
         let res = Asn1Der.encode('VISIBLE_STRING',this.identity) +
@@ -147,7 +146,7 @@ export class AttestationRequest {
         if (!signatureVerify) {
             return false;
         }
-        console.log('signatureVerify OK');
+        // console.log('signatureVerify OK');
 
         let AttestationCryptoInstance = new AttestationCrypto();
         // if (!AttestationCryptoInstance.verifyProof(this.pok)) {
@@ -157,7 +156,7 @@ export class AttestationRequest {
             return false;
         }
 
-        console.log('erifyAttestationRequestProof OK');
+        // console.log('erifyAttestationRequestProof OK');
 
         return true;
     }

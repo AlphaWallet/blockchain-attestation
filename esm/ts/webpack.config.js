@@ -14,6 +14,11 @@ module.exports = {
     resolve: {
         extensions: [ '.tsx', '.ts', '.js' ],
     },
+    resolveLoader: {
+        modules: ['node_modules'],
+        extensions: ['.js', '.json'],
+        mainFields: ['loader', 'main']
+    },
     output: {
         filename: 'bundle.js',
         path: path.resolve(__dirname, 'dist'),

@@ -3,6 +3,7 @@ import {Asn1Der} from "./DerUtility";
 import { AttestationCrypto } from "./AttestationCrypto";
 import {bufToBn, hexStringToArray, uint8tohex} from "./utils";
 import {KeyPair} from "./KeyPair";
+import {SignatureUtility} from "./SignatureUtility";
 
 let sha3 = require("js-sha3");
 let EC = require("elliptic");
@@ -10,27 +11,68 @@ let ec = new EC.ec('secp256k1');
 
 
 export class Cheque {
-    publicKey: string;
-    riddle: Uint8Array;
-    encoded: string;
+    // publicKey: string;
+    // riddle: Uint8Array;
+    private commitment: Uint8Array;
+    public encoded: string;
+    private identifier: string;
+    private type: string;
+    private amount: number;
+    private validity: number;
+    private keys: KeyPair;
+    private secret: bigint;
+    private notValidBefore: number;
+    private notValidAfter: number;
+    private signature: Uint8Array;
     // TODO code it
-    constructor(private identifier: string, private type: string, private amount: number, private validity: number, private keys: KeyPair, private secret: bigint) {}
+    constructor() {}
 
-    createAndVerify(){
+    static fromData(commitment: Uint8Array, amount: number, notValidBefore: number, notValidAfter: number, signature: Uint8Array, keys: KeyPair) {
+        const me = new this();
+
+        me.commitment = commitment;
+        me.keys = keys;
+        me.amount = amount;
+        if (notValidBefore % 1000 != 0 || notValidAfter % 1000 != 0) {
+            throw new Error("Can only support time granularity to the second");
+        }
+        me.notValidBefore = notValidBefore;
+        me.notValidAfter = notValidAfter;
+        me.signature = signature;
+        let cheque = me.makeCheque();
+        me.encoded = me.encodeSignedCheque(cheque, uint8tohex(signature));
+
+        if (!me.verify()) {
+            throw new Error("Signature is invalid");
+        }
+
+        return me;
+    }
+
+    static createAndVerify(identifier: string, type: string, amount: number, validity: number, keys: KeyPair, secret: bigint){
+
+        let me = new this();
+
+        me.identifier = identifier;
+        me.type = type;
+        me.amount = amount;
+        me.validity = validity;
+        me.keys = keys;
+        me.secret = secret;
+
         let crypto = new AttestationCrypto();
         // this.riddle = crypto.makeRiddle(this.identifier, ATTESTATION_TYPE[this.type], this.secret);
-        this.riddle = crypto.makeCommitment(this.identifier, ATTESTATION_TYPE[this.type], this.secret);
+        me.commitment = crypto.makeCommitment(me.identifier, ATTESTATION_TYPE[me.type], me.secret);
 
-        this.publicKey = this.keys.getPublicKeyAsHexStr();
+        // me.publicKey = me.keys.getPublicKeyAsHexStr();
         let current =  new Date().getTime() ;
-        let notValidBefore = current - (current % 1000); // Round down to nearest second
-        let notValidAfter = notValidBefore + this.validity * 1000;
-        let cheque = this.makeCheque(notValidBefore, notValidAfter);
+        me.notValidBefore = current - (current % 1000); // Round down to nearest second
+        me.notValidAfter = me.notValidBefore + me.validity * 1000;
+        let cheque = me.makeCheque();
 
-        let ecKey = ec.keyFromPrivate(this.keys.getPrivateAsHexString(), 'hex');
+        let ecKey = ec.keyFromPrivate(me.keys.getPrivateAsHexString(), 'hex');
         let chequeHash = sha3.keccak256(hexStringToArray(cheque));
         var signature = ecKey.sign( chequeHash );
-        let pubPointHEX = this.keys.getPublicKeyAsHexStr();
 
         // console.log("signature.toDER() = " + bufToBn(signature.toDER()).toString(16) );
         // let signatureSequence = Asn1Der.encode('SEQUENCE_30',
@@ -42,10 +84,10 @@ export class Cheque {
         let signatureHexDerDitString = Asn1Der.encode('BIT_STRING', signature.toDER('hex'));
         // console.log("signatureHexDerDitString = " + signatureHexDerDitString);
 
-        this.encoded = this.encodeSignedCheque(
+        me.encoded = me.encodeSignedCheque(
             cheque,
             signatureHexDerDitString,
-            pubPointHEX);
+        );
 
         let verify = ecKey.verify(chequeHash, signature);
         // console.log('verify = ' + verify);
@@ -56,29 +98,40 @@ export class Cheque {
         // console.log(Asn1Der.encode('OCTET_STRING', this.secret.toString(16)));
         return {
             cheque,
-            chequeEncoded: this.encoded,
+            chequeEncoded: me.encoded,
             derSignature: signatureHexDerDitString,
-            derSecret: Asn1Der.encode('SEQUENCE_30', Asn1Der.encode('OCTET_STRING', this.secret.toString(16)))
+            derSecret: Asn1Der.encode('SEQUENCE_30', Asn1Der.encode('OCTET_STRING', me.secret.toString(16)))
         }
     }
 
-    encodeSignedCheque(cheque: string, derSign: string, pubPoint: string){
-        let fullSequence = cheque + Asn1Der.encode('BIT_STRING', pubPoint) + derSign;
+    encodeSignedCheque(cheque: string, signature: string){
+        let fullSequence = cheque + Asn1Der.encode('BIT_STRING', this.keys.getPublicKeyAsHexStr()) + signature;
         return Asn1Der.encode('SEQUENCE_30', fullSequence);
     }
 
-    makeCheque(notValidBefore: number, notValidAfter: number){
+    // makeCheque(notValidBefore: number, notValidAfter: number){
+    makeCheque(){
         let timeList =
-            Asn1Der.encode('GENERALIZED_TIME', formatGeneralizedDateTime(notValidBefore)) +
-            Asn1Der.encode('GENERALIZED_TIME', formatGeneralizedDateTime(notValidAfter));
+            Asn1Der.encode('GENERALIZED_TIME', formatGeneralizedDateTime(this.notValidBefore)) +
+            Asn1Der.encode('GENERALIZED_TIME', formatGeneralizedDateTime(this.notValidAfter));
         // console.log('timeList = ' + timeList);
         let fullSequence =
             Asn1Der.encode('INTEGER', this.amount) +
             Asn1Der.encode('SEQUENCE_30', timeList) +
-            Asn1Der.encode('OCTET_STRING', uint8tohex(this.riddle));
+            Asn1Der.encode('OCTET_STRING', uint8tohex(this.commitment));
         return Asn1Der.encode('SEQUENCE_30', fullSequence);
     }
 
+
+    verify(): boolean{
+        let cheque = this.makeCheque();
+
+        // let ecKey = ec.keyFromPublic(this.keys.getPrivateAsHexString(), 'hex');
+        // let chequeHash = sha3.keccak256(hexStringToArray(cheque));
+        // return ecKey.verify(chequeHash, this.signature);
+
+        return SignatureUtility.verify(cheque, uint8tohex(this.signature), this.keys);
+    }
 
     // TODO code it
     getDerEncoding(): Uint8Array{
