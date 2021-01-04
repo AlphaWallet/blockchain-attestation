@@ -8,21 +8,15 @@ import {hexStringToArray} from "./libs/utils";
 import {KeyPair} from "./libs/KeyPair";
 import {IdentifierAttestation} from "./libs/IdentifierAttestation";
 const ASN1 = require('@lapo/asn1js');
-// const Hex = require('@lapo/asn1js/hex');
-
-// let EC = require("elliptic");
-// let ec = new EC.ec('secp256k1');
 
 class main {
     crypto: AttestationCrypto;
     Asn1Der: Asn1Der;
     Asn1: any;
-    // Hex: any;
     constructor() {
         this.crypto = new AttestationCrypto();
         this.Asn1Der = new Asn1Der();
         this.Asn1 = ASN1;
-        // this.Hex = Hex;
     }
     createKeys() {
         return KeyPair.createKeys();
@@ -33,8 +27,7 @@ class main {
     }
 
     createCheque(amount: number, receiverId: string, type: string, validityInMilliseconds: number, keys: KeyPair, secret: bigint) {
-        let cheque: Cheque = new Cheque(receiverId, type, amount, validityInMilliseconds, keys, secret);
-        return cheque.createAndVerify();
+        return Cheque.createAndVerify(receiverId, type, amount, validityInMilliseconds, keys, secret);
     }
 
     requestAttest(receiverId: string, type: string, keys: KeyPair) {
@@ -49,7 +42,7 @@ class main {
     }
 
     constructAttest( keys: KeyPair, issuerName: string, validityInMilliseconds: number, requestBytesDehHexStr: string): any {
-        console.log("Signing attestation...");
+        // console.log("Signing attestation...");
 
         let attestRequest = AttestationRequest.fromBytes(Uint8Array.from(hexStringToArray(requestBytesDehHexStr)));
 
@@ -58,7 +51,7 @@ class main {
         // let checkValidity = 'Validate attestation signing request ' + ( attestRequest.checkValidity() ? 'OK' : 'failed') ;
 
         console.log('verify = ' + verify);
-        // console.log('checkValidity = ' + checkValidity);
+
         return {
             verify,
             // checkValidity
