@@ -23,8 +23,18 @@
     let counter = 1;
     (async ()=>{
 
-        writeToLog("Constructing key pair......");
         let crypto = new CryptoTicket();
+
+        let magicUrl = 'https://ticket.devcon.org/?ticket=MIGbMA0CAQYCBWE3ap3-AgEABEEEEjVknVv9Kf7F2Ftt6QVO3I02eRadiE1kJ6kvr934-TApOLZxrh5GL3jLoEz9Jv42FspPv-LHFa6M9AaOuLAvIgNHADBEAiBwLK_95NPZo0W01HDBfyZisZ2KaNrzoWuxRV-nhjGLMAIgaOP4eVVINH5xM8Cv9OVDdyOG3BxUqyPVQOuDU9PaC9o=&secret=45845870684';
+        let dataObj = new SignedDevconTicket(magicUrl);
+        console.log(dataObj);
+
+        let dataArr = [48,129,153,48,11,2,1,6,2,3,0,190,6,2,1,0,4,65,4,10,253,240,226,71,76,174,155,102,22,240,75,172,221,159,118,171,88,130,219,184,57,157,63,96,161,83,97,218,215,3,15,39,190,63,88,63,228,93,233,73,95,132,244,130,55,236,43,124,113,14,179,181,210,231,165,101,45,141,86,199,24,37,111,3,71,0,48,68,2,32,56,219,33,182,181,183,198,146,218,173,162,182,46,187,137,229,163,110,58,60,206,102,30,56,83,43,201,172,200,92,52,27,2,32,112,70,115,33,143,119,178,71,181,81,171,60,61,116,225,239,143,79,126,58,224,64,29,83,84,38,101,58,170,94,194,162];
+        dataObj = new SignedDevconTicket(Uint8Array.from(dataArr).buffer);
+        console.log(dataObj);
+
+        writeToLog("Constructing key pair......");
+
         // let keys = crypto.createKeys();
         let alicePrivateKeyBase64 = `-----BEGIN PRIVATE KEY-----
         MIICSwIBADCB7AYHKoZIzj0CATCB4AIBATAsBgcqhkjOPQEBAiEA/////////////

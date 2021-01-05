@@ -4,7 +4,7 @@ import {
     mod,
     uint8merge,
     stringToArray,
-    BnPowMod, hexStringToArray, uint8tohex
+    BnPowMod, hexStringToArray, uint8tohex, bnToBuf, bnToUint8, uint8ToBn
 } from "./utils";
 import {ProofOfExponent } from "./ProofOfExponent";
 import {KeyPair} from "./KeyPair";
@@ -14,11 +14,13 @@ let sha3 = require("js-sha3");
 // Generator for message part of Pedersen commitments generated deterministically from mapToInteger queried on 0 and mapped to the curve using try-and-increment
 // export const Pedestren_G = new Point(20000156897076804373511442327333074562530252705735619022974068652767906975443n, 16135862203487767418272788596559070291202237796623574414172670126674549722701n, CURVE_BN256);
 // Updated parameters #60
-export const Pedestren_G = new Point(12022136709705892117842496518378933837282529509560188557390124672992517127582n, 6765325636686621066142015726326349598074684595222800743368698766652936798612n, CURVE_BN256);
+// export const Pedestren_G = new Point(12022136709705892117842496518378933837282529509560188557390124672992517127582n, 6765325636686621066142015726326349598074684595222800743368698766652936798612n, CURVE_BN256);
+export const Pedestren_G = new Point(15729599519504045482191519010597390184315499143087863467258091083496429125073n, 1368880882406055711853124887741765079727455879193744504977106900552137574951n, CURVE_BN256);
 // Generator for randomness part of Pedersen commitments generated deterministically from  mapToInteger queried on 1 to the curve using try-and-increment
 // export const Pedestren_H = new Point(85797412565613170319266654805631801108755836445783043049717719714755607913068n, 55241105687255465486443020367129718693309139166156194387150856583227301086165n, CURVE_BN256);
 // Updated parameters #60
-export const Pedestren_H = new Point(12263903704889727924109846582336855803381529831687633314439453294155493615168n, 1637819407897162978922461013726819811885734067940976901570219278871042378189n, CURVE_BN256);
+// export const Pedestren_H = new Point(12263903704889727924109846582336855803381529831687633314439453294155493615168n, 1637819407897162978922461013726819811885734067940976901570219278871042378189n, CURVE_BN256);
+export const Pedestren_H = new Point(10071451177251346351593122552258400731070307792115572537969044314339076126231n, 2894161621123416739138844080004799398680035544501805450971689609134516348045n, CURVE_BN256);
 
 
 export class AttestationCrypto {
@@ -26,10 +28,26 @@ export class AttestationCrypto {
     static OID_SIGNATURE_ALG: string = "1.2.840.10045.2.1";
     constructor() {
         this.rand = this.makeSecret();
-        if (mod(CURVE_BN256.P,4n) != 3n) {
-            throw new Error("The crypto will not work with this choice of curve");
+        // if (mod(CURVE_BN256.P,4n) != 3n) {
+        //     throw new Error("The crypto will not work with this choice of curve");
+        // }
+        if (!this.verifyCurveOrder(CURVE_BN256.n)) {
+            throw new Error("Static values do not work with current implementation");
         }
+
     }
+    private verifyCurveOrder(curveOrder: bigint): boolean{
+        // Verify that the curve order is less than 2^256 bits, which is required by mapToCurveMultiplier
+        // Specifically checking if it is larger than 2^curveOrderBitLength and that no bits at position curveOrderBitLength+1 or larger are set
+        let curveOrderBitLength: bigint = BigInt(curveOrder.toString(2).length);
+        console.log(`curve length = ${curveOrderBitLength}`);
+        if (curveOrder < (1n << (curveOrderBitLength-1n)) || (curveOrder >> curveOrderBitLength) > 0n) {
+            console.log("Curve order is not 253 bits which is required by the current implementation");
+            return false;
+        }
+        return true;
+    }
+
     getType(type: string): number {
         switch (type.toLowerCase()) {
             case "mail":
@@ -40,6 +58,7 @@ export class AttestationCrypto {
                 throw new Error("Wrong type of identifier");
         }
     }
+
     makeRiddle(identity: string, type: number, secret: bigint): Uint8Array {
         let hashedIdentity = this.hashIdentifier(type, identity);
         return hashedIdentity.multiplyDA(secret).getEncoded(false);
@@ -65,7 +84,8 @@ export class AttestationCrypto {
      * @return
      */
     makeCommitmentFromHiding(identity: string, type: number, hiding: Point): Uint8Array {
-        let hashedIdentity:bigint = this.mapToIntegerIntString(type, identity);
+        // let hashedIdentity:bigint = this.mapToIntegerIntString(type, identity);
+        let hashedIdentity:bigint = this.mapToCurveMultiplier(type, identity);
         // Construct Pedersen commitment
         let commitment:Point = Pedestren_G.multiplyDA(hashedIdentity).add(hiding);
         return commitment.getEncoded(false);
@@ -88,6 +108,28 @@ export class AttestationCrypto {
 
     mapToIntegerIntString(type: number, str: string ):bigint {
         return this.mapToInteger(type, Uint8Array.from(stringToArray(str)));
+    }
+
+    mapToCurveMultiplier(type: number, identity: string):bigint {
+
+        let identityBytes:Uint8Array = Uint8Array.from(stringToArray(identity.trim().toLowerCase() ) );
+        // ByteBuffer
+        // let buf = ByteBuffer.allocate(4 + identityBytes.length);
+        let prefix = [0,0,0,type];
+        // buf.putInt(type.ordinal());
+        // buf.put(identityBytes);
+        let uintArr:Uint8Array = uint8merge([Uint8Array.from(prefix),identityBytes]);
+        let sampledVal:bigint = uint8ToBn(uintArr);
+        do {
+            sampledVal = this.mapTo256BitInteger(bnToUint8(sampledVal));
+        } while (sampledVal >= CURVE_BN256.n);
+        return sampledVal;
+    }
+    /**
+     * Map a byte array into a uniformly random 256 bit (positive) integer, stored as a Big Integer.
+     */
+    mapTo256BitInteger(input: Uint8Array): bigint {
+        return BigInt('0x' + sha3.keccak256(input));
     }
 
     mapToIntegerFromUint8(arr: Uint8Array ):bigint {

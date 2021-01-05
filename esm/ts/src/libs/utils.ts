@@ -51,6 +51,10 @@ export function egcd(a: bigint, b: bigint) {
     return [b, x, y];
 }
 
+export function uint8ToBn(uint8: Uint8Array): bigint{
+    return bufToBn(uint8);
+}
+
 export function bufToBn(buf: Uint8Array) {
     let hex: string[] = [];
     let u8 = Uint8Array.from(buf);
@@ -62,6 +66,10 @@ export function bufToBn(buf: Uint8Array) {
     });
 
     return BigInt('0x' + hex.join(''));
+}
+
+export function bnToUint8(bn: bigint): Uint8Array{
+    return bnToBuf(bn);
 }
 
 export function bnToBuf(bn: bigint): Uint8Array {

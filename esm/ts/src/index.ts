@@ -7,7 +7,12 @@ import { ProofOfExponent } from "./libs/ProofOfExponent";
 import {hexStringToArray} from "./libs/utils";
 import {KeyPair} from "./libs/KeyPair";
 import {IdentifierAttestation} from "./libs/IdentifierAttestation";
+import {SignedDevconTicket} from "./asn1/SignedDevonTicket";
 const ASN1 = require('@lapo/asn1js');
+
+class Negotiator {
+
+}
 
 class main {
     crypto: AttestationCrypto;
@@ -21,6 +26,10 @@ class main {
     createKeys() {
         return KeyPair.createKeys();
     }
+
+    decodeTicket(magiclink: string){
+        return new SignedDevconTicket(magiclink);
+   }
 
     keysFromPrivateBase64(str: string){
         return KeyPair.privateFromAsn1base64(str);
@@ -120,4 +129,6 @@ class main {
 
 }
 (window as any).CryptoTicket = main;
+(window as any).SignedDevconTicket = SignedDevconTicket;
+// (window as any).Negotiator = Negotiator;
 
