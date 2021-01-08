@@ -9,6 +9,7 @@ import {
 import { getParametersValue, clearProps, bufferToHexCodes } from "pvutils";
 import AlgorithmIdentifier from "./AlgorithmIdentifier.js";
 import PublicKeyInfo from "./PublicKeyInfo.js";
+import BigInt from "big-integer";
 
 export class DevconTicket {
   //**********************************************************************************
@@ -27,16 +28,16 @@ export class DevconTicket {
       this.fromSchema(asn1.result);
     } else {
       this.devconId = getParametersValue(
-          source,
-          "devconId"
+        source,
+        "devconId"
       );
       this.ticketId = getParametersValue(
-          source,
-          "ticketId"
+        source,
+        "ticketId"
       );
       this.ticketClass = getParametersValue(
-          source,
-          "ticketClass"
+        source,
+        "ticketClass"
       );
     }
   }
@@ -88,17 +89,17 @@ export class DevconTicket {
 
     if ("devconId" in asn1.result) {
       const devconId = asn1.result["devconId"].valueBlock._valueHex;
-      this.devconId = BigInt("0x" + bufferToHexCodes(devconId));
+      this.devconId = BigInt("0x" + bufferToHexCodes(devconId)).value;
     }
 
     if ("ticketId" in asn1.result) {
       const ticketId = asn1.result["ticketId"].valueBlock._valueHex
-      this.ticketId = BigInt("0x" + bufferToHexCodes(ticketId));
+      this.ticketId = BigInt("0x" + bufferToHexCodes(ticketId)).value;
     }
 
     if ("ticketClass" in asn1.result) {
       const ticketClass = asn1.result["ticketClass"].valueBlock._valueHex;
-      this.ticketClass = BigInt("0x" + bufferToHexCodes(ticketClass));
+      this.ticketClass = BigInt("0x" + bufferToHexCodes(ticketClass)).value;
     }
 
     //endregion
@@ -114,15 +115,15 @@ export class SignedDevconTicket {
    * @param {Object} [source:String]  source is DER encoded
    */
   constructor(source = {}) {
-    if (typeof(source) == "string") {
+    if (typeof (source) == "string") {
 
       const ticketEncoded = (source.startsWith("https://")) ?
-          (new URL(source)).searchParams.get('ticket') : source;
-      
+        (new URL(source)).searchParams.get('ticket') : source;
+
       let base64str = ticketEncoded
-          .split('_').join('+')
-          .split('-').join('/')
-          .split('.').join('=');
+        .split('_').join('+')
+        .split('-').join('/')
+        .split('.').join('=');
 
       // source = Uint8Array.from(Buffer.from(base64str, 'base64')).buffer;
       if (typeof Buffer !== 'undefined') {
@@ -130,7 +131,7 @@ export class SignedDevconTicket {
       } else {
         source = Uint8Array.from(atob(base64str), c => c.charCodeAt(0)).buffer;
       }
-      
+
     }
     if (source instanceof ArrayBuffer) {
       const asn1 = fromBER(source);
@@ -139,18 +140,18 @@ export class SignedDevconTicket {
       this.ticket = new DevconTicket(source.ticket);
 
       this.commitment = getParametersValue(
-          source,
-          "commitment"
+        source,
+        "commitment"
       );
 
       // TODO: issue #75
       // this.signatureAlgorithm = new AlgorithmIdentifier(source.signatureAlgorithm);
-	  
-	  this.publicKeyInfo = new PublicKeyInfo(source.publicKeyInfo)
+
+      this.publicKeyInfo = new PublicKeyInfo(source.publicKeyInfo)
 
       this.signatureValue = getParametersValue(
-          source,
-          "signatureValue"
+        source,
+        "signatureValue"
       );
     }
   }
@@ -191,16 +192,16 @@ export class SignedDevconTicket {
          * that this data is not important for the 1st delivery deadline, won't be read by client anyway.
          * TODO: add support for PublicKeyInfo https://github.com/TokenScript/attestation/issues/75
          */
-        new Sequence( {
+        new Sequence({
           name: "publicKeyInfo",
           optional: true,
           value: [
             PublicKeyInfo.schema(
-                names.publicKeyInfo || {
-                  names: {
-                    blockName: "publicKeyInfo",
-                  },
-                }
+              names.publicKeyInfo || {
+                names: {
+                  blockName: "publicKeyInfo",
+                },
+              }
             )
           ]
         }),
@@ -223,7 +224,7 @@ export class SignedDevconTicket {
       "ticket",
       "commitment",
       // TODO: #75
-	  "publicKeyInfo",
+      "publicKeyInfo",
       "signatureValue",
     ]);
     //endregion
@@ -232,7 +233,7 @@ export class SignedDevconTicket {
     const asn1 = compareSchema(schema, schema, SignedDevconTicket.schema());
 
     if (asn1.verified === false)
-		throw new Error("Object's schema was not verified against input data for SignedDevconTicket");
+      throw new Error("Object's schema was not verified against input data for SignedDevconTicket");
 
     //endregion
 
@@ -246,7 +247,7 @@ export class SignedDevconTicket {
 
     // TODO: issue #75
     // this.signatureAlgorithm = new AlgorithmIdentifier(asn1.result.signatureAlgorithm);
-	this.publicKeyInfo = new PublicKeyInfo({
+    this.publicKeyInfo = new PublicKeyInfo({
       schema: asn1.result.publicKeyInfo,
     });
 
