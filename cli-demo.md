@@ -46,7 +46,7 @@ The protocol is secure under any composition of senders (Alices) and receivers (
 
 ## Using demo jar file
 
-The demo jar file contains all methods needed to run a full demo flow.
+The demo jar file contains all commands needed to run a full demo flow.
 
 The general syntax for running a command with demo jar file is `java -jar attestation-all.jar <name-of-command>` where `name-of-command` is one of the following: `keys, create-cheque, request-attest, construct-attest, receive-cheque`. 
 We discuss these commands below.
@@ -67,7 +67,7 @@ For example:
 ### Create Cheque
 
 Constructs a cheque of an integer amount, to an identifier of a certain type, which will be valid for a certain amount of seconds, using a private signing key. The command outputs the public and private aspects of the cheque in two separate files.
-This method should be run by Alice.
+This command should be run by Alice.
  
 Specifically the syntax of the command is as follows:
 
@@ -88,7 +88,7 @@ For example:
 ### Request Attestation
 
 Constructs a request for an attestation to a specific identifier of a certain type, signed using a private key. The command outputs the public attestation requests and the private attestation secret.
-This method should be run by Bob.
+This command should be run by Bob.
 
 Specifically the syntax of the command is as follows:
 
@@ -106,7 +106,7 @@ For example:
 
 ### Construct Attestation
 Constructs an attestation to a specific identifier of a certain type which is valid for a certain amount of time, signed using a private key and linked to human readable name of the attestor. The command outputs the public attestation.
-This method should be run by the Attestor.
+This command should be run by the Attestor.
 
 Specifically the syntax of the command is as follows:
 
@@ -122,25 +122,34 @@ For example:
 
 `java -jar attestation-all.jar construct-attest priv.pem AlphaWallet 3600 request.pem attestation.crt`
 
-### Redeem Cheque
-
-Redeems a cheque using an attestation, its secret, the public cheque and its secret, signed using a private key.
-This method should be run by Bob.
+### Receive Cheque
+After having received a cheque this command creates a signed redeem request which can later be posted to the blockchain to redeem the cheque. The construction of such a redeem request requires both the public cheque and its secret, an attestation and its secret, and a private key to sign the request.
+The command outputs a signed redeem request.
+This command should be run by Bob.
 
 Specifically the syntax of the command is as follows:
 
-`java -jar attestation-all.jar receive-cheque <receiver-private-key> <cheque-secret> <request-secret> <public-riddle> <attestation> <attestor-public-key>`
+`java -jar attestation-all.jar receive-cheque <receiver-private-key> <cheque-secret> <request-secret> <public-riddle> <attestation> <attestor-public-key> <redeem-request>`
 
 - `receiver-private-key` is the directory of the private key used to sign the redeem request, e.g. `priv.pem`.
 - `cheque-secret` is the directory where the secret part of the cheque is placed, e.g. `cheque-secret.pem`.
 - `request-secret` is the directory where the secret part of the attestation request should be placed, e.g. `request-secret.pem`.
 - `public-riddle` is the directory where the public part of the cheque is placed, e.g. `cheque.pem`.
 - `attestation` is the directory where the attestation is placed, e.g. `attestation.crt`.
-- `attestor-public-key` is the directory where the Attestor's public key is placed, e.g. `Attestor-pub.pem`
+- `attestor-public-key` is the directory where the Attestor's public key is placed, e.g. `Attestor-pub.pem`.
+- `redeem-request` is the directory where the signed redeem request should be placed, e.g. `redeem.pem`.
 
 For example:
 
-`java -jar attestation-all.jar receive-cheque priv.pem cheque-secret.pem request-secret.pem cheque.pem attestation.crt Attestor-pub.pem`
+`java -jar attestation-all.jar receive-cheque priv.pem cheque-secret.pem request-secret.pem cheque.pem attestation.crt Attestor-pub.pem redeem.pem`
+
+### Redeem Cheque
+Redeems a cheque by posting a signed redeem request to the smart contract on the blockchain. The command does not produce any output.
+This method should be run by Bob.
+
+Specifically the syntax of the command is as follows:
+
+`java -jar attestation-all.jar redeem-cheque priv.pem redeem.pem Attestor-pub.pem`
 
 ### Full local execution
 
@@ -158,4 +167,6 @@ To run the full protocol locally execute the following commands:
 
 `java -jar attestation-all.jar construct-attest Attestor-priv.pem AlphaWallet 3600 request.pem attestation.crt`
 
-`java -jar attestation-all.jar receive-cheque Bob-priv.pem cheque-secret.pem request-secret.pem cheque.pem attestation.crt Attestor-pub.pem`
+`java -jar attestation-all.jar receive-cheque Bob-priv.pem cheque-secret.pem request-secret.pem cheque.pem attestation.crt Attestor-pub.pem redeem.pem`
+
+`java -jar attestation-all.jar redeem-cheque Bob-priv.pem redeem.pem Attestor-pub.pem`

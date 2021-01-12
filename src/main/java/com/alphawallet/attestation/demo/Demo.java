@@ -85,11 +85,26 @@ public class Demo {
                     Paths.get(arguments.get(3)),
                     Paths.get(arguments.get(4)),
                     Paths.get(arguments.get(5)),
-                    Paths.get(arguments.get(6)));
+                    Paths.get(arguments.get(6)),
+                    Paths.get(arguments.get(7)));
           } catch (Exception e) {
             System.err.println("Was expecting: <signing key input dir> <cheque secret input dir> "
                 + "<attestation secret input dir> <cheque input dir> <attestation input dir> "
-                + "<attestation signing key input dir>");
+                + "<attestation verification key input dir> <redeem request output dir>");
+            throw e;
+          }
+          System.out.println("Finished redeeming cheque");
+          break;
+
+        case "redeem-cheque":
+          System.out.println("Posting cheque redeem request to the blockchain...");
+          try {
+            redeemCheque(Paths.get(arguments.get(1)),
+                Paths.get(arguments.get(2)),
+                Paths.get(arguments.get(3)));
+          } catch (Exception e) {
+            System.err.println("Was expecting: <signing key input dir> <redeem request input dir> "
+                + "<attestation verification key input dir>");
             throw e;
           }
           System.out.println("Finished redeeming cheque");
@@ -160,8 +175,8 @@ public class Demo {
   }
 
   private static void receiveCheque(Path pathUserKey, Path chequeSecretDir,
-                                    Path pathAttestationSecret, Path pathCheque, Path pathAttestation, Path pathAttestationKey)
-  throws IOException {
+      Path pathAttestationSecret, Path pathCheque, Path pathAttestation,
+      Path pathAttestationKey, Path outputRedeemDir) throws IOException {
     AsymmetricCipherKeyPair userKeys = DERUtility.restoreBase64Keys(Files.readAllLines(pathUserKey));
     byte[] chequeSecretBytes = DERUtility.restoreBytes(Files.readAllLines(chequeSecretDir));
     BigInteger chequeSecret = DERUtility.decodeSecret(chequeSecretBytes);
@@ -192,19 +207,30 @@ public class Demo {
     }
 
     AttestedObject redeem = new AttestedObject(cheque, att, userKeys, attestationSecret, chequeSecret, crypto);
-    if (!redeem.checkValidity()) {
+    byte[] encoding = redeem.getDerEncoding();
+    DERUtility.writePEM(encoding, "REDEEM", outputRedeemDir);
+  }
+
+  private static void redeemCheque(Path pathUserKey, Path pathRedeemRequest, Path pathAttestationKey) throws IOException {
+    AsymmetricCipherKeyPair userKeys = DERUtility.restoreBase64Keys(Files.readAllLines(pathUserKey));
+    byte[] redeemRequestBytes = DERUtility.restoreBytes(Files.readAllLines(pathRedeemRequest));
+    AsymmetricKeyParameter attestationProviderKey = PublicKeyFactory.createKey(
+        DERUtility.restoreBytes(Files.readAllLines(pathAttestationKey)));
+    AttestedObject redeemRequest = new AttestedObject(redeemRequestBytes, new ChequeDecoder(), attestationProviderKey,
+        userKeys.getPublic());
+    if (!redeemRequest.checkValidity()) {
       System.err.println("Could not validate redeem request");
       throw new RuntimeException("Validation failed");
     }
-    if (!redeem.verify()) {
+    if (!redeemRequest.verify()) {
       System.err.println("Could not verify redeem request");
       throw new RuntimeException("Verification failed");
     }
     // TODO how should this actually be?
     SmartContract sc = new SmartContract();
-    if (!sc.testEncoding(redeem.getPok())) {
+    if (!sc.testEncoding(redeemRequest.getPok())) {
       System.err.println("Could not submit proof of knowledge to the chain");
-      throw new RuntimeException("Chain submission failed");
+      throw new RuntimeException("Blockchain submission failed");
     }
   }
 

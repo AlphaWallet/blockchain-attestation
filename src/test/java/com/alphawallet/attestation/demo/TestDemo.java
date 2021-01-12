@@ -43,8 +43,11 @@ public class TestDemo {
     // Construct attestation
     args = new String[]{"construct-attest", PREFIX + "attestor-priv.pem", "AlphaWallet", "3600", PREFIX + "attestation-request.pem", PREFIX + "attestation.pem"};
     Demo.main(args);
-    // Redeem
-    args = new String[]{"receive-cheque", PREFIX + "receiver-priv.pem", PREFIX + "cheque-secret.pem", PREFIX + "attestation-secret.pem", PREFIX + "cheque.pem", PREFIX + "attestation.pem", PREFIX + "attestor-pub.pem"};
+    // Construct redeem request
+    args = new String[]{"receive-cheque", PREFIX + "receiver-priv.pem", PREFIX + "cheque-secret.pem", PREFIX + "attestation-secret.pem", PREFIX + "cheque.pem", PREFIX + "attestation.pem", PREFIX + "attestor-pub.pem", PREFIX + "redeem-cheque.pem"};
+    Demo.main(args);
+    // Redeem using the redeem request
+    args = new String[]{"redeem-cheque", PREFIX + "receiver-priv.pem", PREFIX + "redeem-cheque.pem", PREFIX + "attestor-pub.pem"};
     Demo.main(args);
   }
 }
