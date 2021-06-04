@@ -12,7 +12,7 @@ import com.alphawallet.attestation.FullProofOfExponent;
 import com.alphawallet.attestation.HelperTest;
 import com.alphawallet.attestation.IdentifierAttestation;
 import com.alphawallet.attestation.IdentifierAttestation.AttestationType;
-import com.alphawallet.attestation.SignedIdentityAttestation;
+import com.alphawallet.attestation.SignedIdentifierAttestation;
 import com.alphawallet.attestation.core.AttestationCrypto;
 import com.alphawallet.attestation.core.DERUtility;
 import com.alphawallet.attestation.core.SignatureUtility;
@@ -58,7 +58,7 @@ public class TestRedeemCheque {
     BigInteger subjectSecret = new BigInteger("42424242");
     BigInteger senderSecret = new BigInteger("112112112");
     IdentifierAttestation att = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), subjectSecret, "test@test.ts" );
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, issuerKeys);
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, issuerKeys);
     Cheque cheque = new Cheque("test@test.ts", AttestationType.EMAIL, 1000, 3600000, senderKeys, senderSecret);
     attestedCheque = new AttestedObject(cheque, signed, subjectKeys, subjectSecret, senderSecret, crypto);
     assertTrue(attestedCheque.verify());
@@ -124,9 +124,9 @@ public class TestRedeemCheque {
     Attestation att = attestedCheque.getAtt().getUnsignedAttestation();
     Field field = att.getClass().getSuperclass().getDeclaredField("version");
     field.setAccessible(true);
-    // Invalid version for Identity Attestation along with failing signature
+    // Invalid version for Identifier Attestation along with failing signature
     field.set(att, new ASN1Integer(19));
-    // Only correctly formed Identity Attestations are allowed
+    // Only correctly formed Identifier Attestations are allowed
     assertFalse(att.checkValidity());
     assertFalse(attestedCheque.checkValidity());
     // Verification should also fail since signature is now invalid
@@ -169,7 +169,7 @@ public class TestRedeemCheque {
 
   @Test
   public void testNegativeDifferentKeys() throws Exception {
-    SignedIdentityAttestation att = attestedCheque.getAtt();
+    SignedIdentifierAttestation att = attestedCheque.getAtt();
     Field field = att.getClass().getDeclaredField("attestationVerificationKey");
     field.setAccessible(true);
     // Change public key
@@ -180,7 +180,7 @@ public class TestRedeemCheque {
   }
 
   @Test
-  public void testNegativeWrongProofIdentity() throws Exception {
+  public void testNegativeWrongProofIdentifier() throws Exception {
     // Add an extra "t" in the mail address
     FullProofOfExponent newPok = crypto.computeAttestationProof( new BigInteger("42424242"));
     Field field = attestedCheque.getClass().getDeclaredField("pok");
@@ -190,7 +190,7 @@ public class TestRedeemCheque {
     // Validation should still pass
     assertTrue(attestedCheque.checkValidity());
     assertTrue(AttestationCrypto.verifyFullProof(newPok));
-    // Verification should fail since the proof is not for the same identity as the attestation and cheque
+    // Verification should fail since the proof is not for the same identifier as the attestation and cheque
     assertFalse(attestedCheque.verify());
   }
 
@@ -215,7 +215,7 @@ public class TestRedeemCheque {
     BigInteger subjectSecret = new BigInteger("42424242");
     BigInteger senderSecret = new BigInteger("112112112");
     IdentifierAttestation att = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), subjectSecret, "something@google.com");
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, issuerKeys);
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, issuerKeys);
     // Wrong mail
     Cheque cheque = new Cheque("something@else.com", AttestationType.EMAIL, 1000, 3600000, senderKeys, senderSecret);
     try {
@@ -232,7 +232,7 @@ public class TestRedeemCheque {
     BigInteger senderSecret = new BigInteger("112112112");
     String mail = "something@google.com";
     IdentifierAttestation att = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), subjectSecret, mail);
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, issuerKeys);
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, issuerKeys);
     Cheque cheque = new Cheque(mail, AttestationType.EMAIL, 1000, 3600000, senderKeys, senderSecret);
     try {
       // Wrong subject secret

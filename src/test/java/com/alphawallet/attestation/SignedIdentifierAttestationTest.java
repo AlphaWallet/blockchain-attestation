@@ -11,7 +11,7 @@ import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-public class SignedIdentityAttestationTest {
+public class SignedIdentifierAttestationTest {
   private static AsymmetricCipherKeyPair subjectKeys;
   private static AsymmetricCipherKeyPair issuerKeys;
   private static SecureRandom rand;
@@ -27,7 +27,7 @@ public class SignedIdentityAttestationTest {
   @Test
   public void testSignAttestation() {
     IdentifierAttestation att = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), issuerKeys.getPublic(), BigInteger.ONE, "some@mail.com" );
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, issuerKeys);
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, issuerKeys);
     assertTrue(signed.checkValidity());
     assertTrue(signed.verify());
     assertTrue(SignatureUtility.verifyEthereumSignature(att.getPrehash(), signed.getSignature(), issuerKeys.getPublic()));
@@ -37,19 +37,19 @@ public class SignedIdentityAttestationTest {
   @Test
   public void testDecoding() throws Exception {
     IdentifierAttestation att = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), issuerKeys.getPublic(), BigInteger.TEN, "someOther@mail.com" );
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, issuerKeys);
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, issuerKeys);
     assertTrue(SignatureUtility.verifyEthereumSignature(att.getPrehash(), signed.getSignature(), issuerKeys.getPublic()));
     assertArrayEquals(att.getPrehash(), signed.getUnsignedAttestation().getPrehash());
     byte[] signedEncoded = signed.getDerEncoding();
-    SignedIdentityAttestation newSigned = new SignedIdentityAttestation(signedEncoded, issuerKeys.getPublic());
+    SignedIdentifierAttestation newSigned = new SignedIdentifierAttestation(signedEncoded, issuerKeys.getPublic());
     assertArrayEquals(signed.getDerEncoding(), newSigned.getDerEncoding());
   }
 
   @Test
   public void invalidAlgorithmParameter() throws Exception {
     IdentifierAttestation att = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), issuerKeys.getPublic(), BigInteger.TEN, "some@mail.com" );
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, issuerKeys);
-    assertThrows(IllegalArgumentException.class, () ->  new SignedIdentityAttestation(signed.getDerEncoding(), subjectKeys.getPublic()));
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, issuerKeys);
+    assertThrows(IllegalArgumentException.class, () ->  new SignedIdentifierAttestation(signed.getDerEncoding(), subjectKeys.getPublic()));
   }
   
 }

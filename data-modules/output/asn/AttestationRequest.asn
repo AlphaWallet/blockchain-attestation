@@ -7,7 +7,7 @@ IMPORTS
     Proof
         FROM ProofOfExponent;
 
-Identity ::= SEQUENCE {
+Identifier ::= SEQUENCE {
     type               IdentifierType,
     proof              Proof
 }

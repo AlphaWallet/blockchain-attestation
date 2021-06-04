@@ -1,4 +1,4 @@
-# Identity Attestations for Web Usage
+# Identifier Attestations for Web Usage
 
 ## Outline
 

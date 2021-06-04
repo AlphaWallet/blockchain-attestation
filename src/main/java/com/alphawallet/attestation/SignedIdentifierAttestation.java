@@ -21,8 +21,8 @@ import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.bouncycastle.crypto.params.AsymmetricKeyParameter;
 import org.bouncycastle.crypto.params.ECPublicKeyParameters;
 
-public class SignedIdentityAttestation implements ASNEncodable, Verifiable, Validateable {
-  private static final Logger logger = LogManager.getLogger(SignedIdentityAttestation.class);
+public class SignedIdentifierAttestation implements ASNEncodable, Verifiable, Validateable {
+  private static final Logger logger = LogManager.getLogger(SignedIdentifierAttestation.class);
 
   public static final AlgorithmIdentifier ECDSA_WITH_SHA256 = new AlgorithmIdentifier(new ASN1ObjectIdentifier("1.2.840.10045.4.3.2"));
 
@@ -30,14 +30,14 @@ public class SignedIdentityAttestation implements ASNEncodable, Verifiable, Vali
   private final byte[] signature;
   private final AsymmetricKeyParameter attestationVerificationKey;
 
-  public SignedIdentityAttestation(IdentifierAttestation att, AsymmetricCipherKeyPair attestationSigningKey) {
+  public SignedIdentifierAttestation(IdentifierAttestation att, AsymmetricCipherKeyPair attestationSigningKey) {
     this.att = att;
     this.signature = SignatureUtility.signWithEthereum(att.getPrehash(), attestationSigningKey.getPrivate());
     this.attestationVerificationKey = attestationSigningKey.getPublic();
     constructorCheck(attestationSigningKey.getPublic());
   }
 
-  public SignedIdentityAttestation(byte[] derEncoding, AsymmetricKeyParameter verificationKey) throws IOException {
+  public SignedIdentifierAttestation(byte[] derEncoding, AsymmetricKeyParameter verificationKey) throws IOException {
     ASN1InputStream input = new ASN1InputStream(derEncoding);
     ASN1Sequence asn1 = ASN1Sequence.getInstance(input.readObject());
     ASN1Sequence attestationEnc = ASN1Sequence.getInstance(asn1.getObjectAt(0));

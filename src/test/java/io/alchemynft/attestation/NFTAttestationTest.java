@@ -1,21 +1,20 @@
 package io.alchemynft.attestation;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.alphawallet.attestation.HelperTest;
 import com.alphawallet.attestation.IdentifierAttestation;
-import com.alphawallet.attestation.SignedIdentityAttestation;
+import com.alphawallet.attestation.SignedIdentifierAttestation;
 import com.alphawallet.attestation.core.SignatureUtility;
 import com.alphawallet.attestation.demo.SmartContract;
 import com.alphawallet.ethereum.ERC721Token;
-import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
-
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 public class NFTAttestationTest {
     private static AsymmetricCipherKeyPair subjectKeys;
@@ -24,9 +23,9 @@ public class NFTAttestationTest {
     private static SecureRandom rand;
     /*
         IdentifierAttestation att = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), BigInteger.ONE, "some@mail.com" );
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, issuerKeys);
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, issuerKeys);
      */
-    static SignedIdentityAttestation attestation;
+    static SignedIdentifierAttestation attestation;
     private SignedNFTAttestation nftAttestation;
     private final SmartContract contract = new SmartContract();
     static final String labeledURI = "https://twitter.com/king_midas";
@@ -41,7 +40,7 @@ public class NFTAttestationTest {
 
         IdentifierAttestation att = new IdentifierAttestation("205521676", "https://twitter.com/zhangweiwu", subjectKeys.getPublic());
         assertTrue(att.checkValidity());
-        attestation = new SignedIdentityAttestation(att, attestorKeys);
+        attestation = new SignedIdentifierAttestation(att, attestorKeys);
 
         System.out.println("SubjectPublicKey's Fingerprint (summarised as Ethereum address):\n" + SignatureUtility.addressFromKey(subjectKeys.getPublic()));
     }
@@ -89,12 +88,12 @@ public class NFTAttestationTest {
     @Test
     public void testDecoding() throws Exception {
         IdentifierAttestation att = HelperTest.makeMaximalAtt(subjectKeys.getPublic());
-        SignedIdentityAttestation signed = new SignedIdentityAttestation(att, issuerKeys);
+        SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, issuerKeys);
         assertTrue(SignatureUtility.verifyEthereumSignature(att.getPrehash(), signed.getSignature(), issuerKeys.getPublic()));
         assertArrayEquals(att.getPrehash(), signed.getUnsignedAttestation().getPrehash());
         byte[] signedEncoded = signed.getDerEncoding();
 
-        SignedIdentityAttestation newSigned = new SignedIdentityAttestation(signedEncoded, issuerKeys.getPublic());
+        SignedIdentifierAttestation newSigned = new SignedIdentifierAttestation(signedEncoded, issuerKeys.getPublic());
         assertArrayEquals(signed.getDerEncoding(), newSigned.getDerEncoding());
     }
 }

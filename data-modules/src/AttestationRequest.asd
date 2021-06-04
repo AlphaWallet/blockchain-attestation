@@ -2,7 +2,7 @@
 <asnx:module xmlns:asnx="urn:ietf:params:xml:ns:asnx" name="AttestationRequest">
   <import name="Proof" schemaLocation="ProofOfExponent.asd"/>
 
-  <namedType name="Identity">
+  <namedType name="Identifier">
     <type>
       <sequence>
         <element name="type" type="IdentifierType">

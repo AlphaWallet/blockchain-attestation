@@ -1,6 +1,7 @@
 package com.alphawallet.attestation;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -9,6 +10,8 @@ import com.alphawallet.attestation.core.SignatureUtility;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.math.BigInteger;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
@@ -56,7 +59,7 @@ public class IdentifierAttestationTest {
     att.setSerialNumber(1);
     assertTrue(att.checkValidity());
 
-    Files.write(p, (new SignedIdentityAttestation(att, otherKeys)).getDerEncoding());
+    Files.write(p, (new SignedIdentifierAttestation(att, otherKeys)).getDerEncoding());
     System.out.println("To check the X509 attestation, run this:");
     System.out.println("$ openssl asn1parse -inform DER -in " + p.toString());
   }
@@ -148,6 +151,37 @@ public class IdentifierAttestationTest {
     field.set(initial, extensions);
     // There must be a commitment in the extensions
     assertFalse(initial.checkValidity());
+  }
+
+  @Test
+  public void testUrlEncoding() {
+    String mail = "tæst@test.ts";
+    IdentifierAttestation initial = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), BigInteger.ONE, mail);
+    assertEquals( initial.getAsUrlWithoutIdentifier() + "&email=t%C3%A6st%40test.ts", initial.getAsUrlWithIdentifier());
+    assertEquals( initial.getAsUrlWithoutIdentifier() + "&email=" + mail, URLDecoder.decode(initial.getAsUrlWithIdentifier(), StandardCharsets.UTF_8));
+    // Ensure that we get a valid URL
+    String decodedWithoutId = URLDecoder.decode(initial.getAsUrlWithoutIdentifier(), StandardCharsets.UTF_8);
+    assertEquals(decodedWithoutId, initial.getAsUrlWithoutIdentifier());
+  }
+
+  @Test
+  public void testUrlEncodingNFT() throws Exception {
+    IdentifierAttestation att = new IdentifierAttestation("205521676", "https://twitter.com/zhangweiwu", subjectKeys.getPublic());
+    assertEquals( att.getAsUrlWithoutIdentifier() + "&205521676=https%3A%2F%2Ftwitter.com%2Fzhangweiwu", att.getAsUrlWithIdentifier());
+    assertEquals( att.getAsUrlWithoutIdentifier() + "&205521676=https://twitter.com/zhangweiwu", URLDecoder.decode(att.getAsUrlWithIdentifier(), StandardCharsets.UTF_8));
+    // Ensure that we get a valid URL
+    String decodedWithoutId = URLDecoder.decode(att.getAsUrlWithoutIdentifier(), StandardCharsets.UTF_8);
+    assertEquals(decodedWithoutId, att.getAsUrlWithoutIdentifier());
+  }
+
+  @Test
+  public void testUrlEncodingFromBin() throws Exception {
+    IdentifierAttestation initial = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), BigInteger.ONE, mail);
+    IdentifierAttestation decoded = new IdentifierAttestation(initial.getDerEncoding());
+    assertEquals(initial.getAsUrlWithoutIdentifier() + "&" + IdentifierAttestation.HIDDEN_TYPE + "=" + IdentifierAttestation.HIDDEN_IDENTIFIER, decoded.getAsUrlWithIdentifier());
+    // Ensure that we get a valid URL
+    String decodedWithId = URLDecoder.decode(decoded.getAsUrlWithIdentifier(), StandardCharsets.UTF_8);
+    assertEquals(decodedWithId, decoded.getAsUrlWithIdentifier());
   }
 
 }

@@ -2,7 +2,7 @@ package com.alphawallet.attestation.eip712;
 
 import com.alphawallet.attestation.FullProofOfExponent;
 import com.alphawallet.attestation.IdentifierAttestation.AttestationType;
-import com.alphawallet.attestation.SignedIdentityAttestation;
+import com.alphawallet.attestation.SignedIdentifierAttestation;
 import com.alphawallet.attestation.UseAttestation;
 import com.alphawallet.attestation.core.AttestationCrypto;
 import com.alphawallet.attestation.core.ExceptionUtil;
@@ -21,11 +21,11 @@ import org.tokenscript.eip712.Eip712Validator;
 import org.tokenscript.eip712.JsonEncodable;
 
 /**
- * Class for asserting and validating that a user who already has an Identity Attestation wishes to
+ * Class for asserting and validating that a user who already has an Identifier Attestation wishes to
  * use it at a given website. The assertion is linked to a public key, which can be used to validate
  * future future communication from the user, up until a user-approved expiration time.
  *
- * Note that this object leaks the user's Identity Attestation (Ethereum Public key) and
+ * Note that this object leaks the user's Identifier Attestation (Ethereum Public key) and
  * the user's identifier to the webserver.
  */
 public class Eip712AttestationUsage extends Eip712Validator implements JsonEncodable, Verifiable,
@@ -127,7 +127,7 @@ public class Eip712AttestationUsage extends Eip712Validator implements JsonEncod
     return useAttestation.getType();
   }
 
-  public SignedIdentityAttestation getAttestation() {
+  public SignedIdentifierAttestation getAttestation() {
     return useAttestation.getAttestation();
   }
 

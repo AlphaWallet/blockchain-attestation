@@ -15,7 +15,7 @@ public class Eip712AttestationRequestWithUsageEncoder extends Eip712Encoder {
   private static final String PROTOCOL_VERSION = "0.1";
 
   private static final String PRIMARY_NAME = "AttestationRequestWUsage";
-  private static final String USAGE_VALUE = "Prove that the \"identity\" is the identity hidden in attestation contained in\"payload\""
+  private static final String USAGE_VALUE = "Prove that the \"identifier\" is the identifier hidden in attestation contained in\"payload\""
       + " and use this to authorize usage of local, temporary keys.";
 
   public Eip712AttestationRequestWithUsageEncoder() {

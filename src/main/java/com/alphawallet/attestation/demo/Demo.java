@@ -9,7 +9,7 @@ import com.alphawallet.attestation.AttestedObject;
 import com.alphawallet.attestation.FullProofOfExponent;
 import com.alphawallet.attestation.IdentifierAttestation;
 import com.alphawallet.attestation.IdentifierAttestation.AttestationType;
-import com.alphawallet.attestation.SignedIdentityAttestation;
+import com.alphawallet.attestation.SignedIdentifierAttestation;
 import com.alphawallet.attestation.UseAttestation;
 import com.alphawallet.attestation.cheque.Cheque;
 import com.alphawallet.attestation.cheque.ChequeDecoder;
@@ -258,7 +258,7 @@ public class Demo {
     byte[] attestationBytes = DERUtility.restoreBytes(Files.readAllLines(pathAttestation));
     AsymmetricKeyParameter attestationProviderKey = PublicKeyFactory.createKey(
         DERUtility.restoreBytes(Files.readAllLines(pathAttestationKey)));
-    SignedIdentityAttestation att = new SignedIdentityAttestation(attestationBytes, attestationProviderKey);
+    SignedIdentifierAttestation att = new SignedIdentifierAttestation(attestationBytes, attestationProviderKey);
 
     if (!cheque.checkValidity()) {
       System.err.println("Could not validate cheque");
@@ -351,7 +351,7 @@ public class Demo {
     Date now = new Date();
     att.setNotValidBefore(now);
     att.setNotValidAfter(new Date(Clock.systemUTC().millis() + validityInMilliseconds));
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, keys);
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, keys);
     DERUtility.writePEM(signed.getDerEncoding(), "ATTESTATION", attestationDir);
   }
 
@@ -372,7 +372,7 @@ public class Demo {
       String receiverId, AttestationType type, Path outputSessionPrivKeyDir, Path outputDirRequest) throws IOException {
     AsymmetricCipherKeyPair userKeys = DERUtility.restoreBase64Keys(Files.readAllLines(pathUserKey));
     AsymmetricKeyParameter attestorKey = PublicKeyFactory.createKey(DERUtility.restoreBytes(Files.readAllLines(attestorVerificationKey)));
-    SignedIdentityAttestation att = new SignedIdentityAttestation(DERUtility.restoreBytes(Files.readAllLines(attestationDir)), attestorKey);
+    SignedIdentifierAttestation att = new SignedIdentifierAttestation(DERUtility.restoreBytes(Files.readAllLines(attestationDir)), attestorKey);
     AsymmetricCipherKeyPair sessionKeys = SignatureUtility.constructECKeys(SESSION_KEY_CURVE, rand);
     String address = SignatureUtility.addressFromKey(userKeys.getPublic());
     byte[] nonce = Nonce.makeNonce(address, WEB_DOMAIN, new Timestamp());

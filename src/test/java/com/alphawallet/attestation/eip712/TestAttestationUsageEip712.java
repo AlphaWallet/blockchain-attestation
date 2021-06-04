@@ -10,7 +10,7 @@ import com.alphawallet.attestation.FullProofOfExponent;
 import com.alphawallet.attestation.HelperTest;
 import com.alphawallet.attestation.IdentifierAttestation;
 import com.alphawallet.attestation.IdentifierAttestation.AttestationType;
-import com.alphawallet.attestation.SignedIdentityAttestation;
+import com.alphawallet.attestation.SignedIdentifierAttestation;
 import com.alphawallet.attestation.UseAttestation;
 import com.alphawallet.attestation.core.AttestationCrypto;
 import com.alphawallet.attestation.core.SignatureUtility;
@@ -43,7 +43,7 @@ public class TestAttestationUsageEip712 {
 
   private static byte[] nonce;
   private static FullProofOfExponent pok;
-  private static SignedIdentityAttestation signedAttestation;
+  private static SignedIdentifierAttestation signedAttestation;
   private static AsymmetricCipherKeyPair attestorKeys;
   private static AsymmetricKeyParameter userSigningKey;
   private static AsymmetricKeyParameter sessionKey;
@@ -64,7 +64,7 @@ public class TestAttestationUsageEip712 {
     pok = crypto.computeAttestationProof(ATTESTATION_SECRET, nonce);
     IdentifierAttestation att = HelperTest
         .makeUnsignedStandardAtt(userKeys.getPublic(), attestorKeys.getPublic(), ATTESTATION_SECRET, MAIL);
-    signedAttestation = new SignedIdentityAttestation(att, attestorKeys);
+    signedAttestation = new SignedIdentifierAttestation(att, attestorKeys);
     X9ECParameters SECT283K1 = SECNamedCurves.getByName("sect283k1");
     sessionKey = SignatureUtility.constructECKeys(SECT283K1, rand).getPublic();
   }
@@ -76,7 +76,7 @@ public class TestAttestationUsageEip712 {
 
   @Test
   public void referenceJsonFormat() {
-    String request = "{\"signatureInHex\":\"0x9aa00efc41a70760385e1acadea8bb3dcd3f17e346191deffee762a740264a9a23dfd7f66a53fca07b5e00a5d542546b67353352b2b2094b192f4ff91d748d671c\",\"jsonSigned\":\"{\\\"types\\\":{\\\"AttestationUsage\\\":[{\\\"name\\\":\\\"payload\\\",\\\"type\\\":\\\"string\\\"},{\\\"name\\\":\\\"description\\\",\\\"type\\\":\\\"string\\\"},{\\\"name\\\":\\\"timestamp\\\",\\\"type\\\":\\\"string\\\"},{\\\"name\\\":\\\"identifier\\\",\\\"type\\\":\\\"string\\\"},{\\\"name\\\":\\\"expirationTime\\\",\\\"type\\\":\\\"string\\\"}],\\\"EIP712Domain\\\":[{\\\"name\\\":\\\"name\\\",\\\"type\\\":\\\"string\\\"},{\\\"name\\\":\\\"version\\\",\\\"type\\\":\\\"string\\\"},{\\\"name\\\":\\\"chainId\\\",\\\"type\\\":\\\"uint256\\\"}]},\\\"primaryType\\\":\\\"AttestationUsage\\\",\\\"message\\\":{\\\"payload\\\":\\\"MIIEkTCCAkAwggHtoAMCARICAQEwCQYHKoZIzj0EAjAOMQwwCgYDVQQDDANBTFgwIhgPMjAyMTA0MjcxMzI2NDBaGA8yMDMxMDQyNTEzMjY0MFowCzEJMAcGA1UEAwwAMIIBMzCB7AYHKoZIzj0CATCB4AIBATAsBgcqhkjOPQEBAiEA_____________________________________v___C8wRAQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHBEEEeb5mfvncu6xVoGKVzocLBwKb_NstzijZWfKBWxb4F5hIOtp3JqPEZV2k-_wOEQio_Re0SKaFVBmcR9CP-xDUuAIhAP____________________66rtzmr0igO7_SXozQNkFBAgEBA0IABNNj3-rhhwxBABhmJpTmPZzkcJ6mElV8GFTdL8aGGsseXxiO8jZNWjDMFSqKAPOHT8sVZV66_uNVTxKQgDgZ8_EwBwIBKgICBTmjVzBVMFMGCysGAQQBizpzeQEoAQH_BEEEBf4waGibxLr-xOtIPTqSyPUm7VhND0Wemc6TpRIpCgQVYa-Hh9BK_SkBIguxAbZb1l_SGiHV9mTj-uzDq4UDCTAJBgcqhkjOPQQCA0IATmSAO6xnzmYKp8PWMfpb2_jGrQE82LIzWnbG3i7zrrU9tBB9z0AWiTdr-9A-nHklSzNneAvFI2vV3ccOdnOguBsCAQEwgfwEQQQetkj_nYGbQHpsWNJ5eHI8TltFCsmJgzzs9v2HwxYM3gmt2VZXjp4go3k37qEfTU2rXXKDOCK7sM0lL_g54kG3BCAILh_RFx9jFVvj5HKYwWgFWrUfmEaVJK9Rt1N6bZDtwgRBBAKjw20pLRnqnXDGhXa7hPTienIja7A1OFy7OFMPMnXzHnYNIpLQk6Jaw9fXIYAjeGRG-6XPEqD1b2ynr9XqFUYEUjBYNUY3QkZFNzUyQUMxQTQ1RjY3NDk3RDlEQ0REOUJCREE1MEE4Mzk1NcBxJpS6VWwViG_3TFMX3w_C5Rk1h9lTxNkbTSZP6dyrAAABeROCpoAwggFHMIH4BgcqhkjOPQIBMIHsAgEBMCUGByqGSM49AQIwGgICARsGCSqGSM49AQIDAzAJAgEFAgEHAgEMMEwEJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBEkEBQMhP3jKRIg_GjuBYvGI5VPNJl8jwVZ6FodpE7DCrCRYSSg2AczaOA8cnjGNkPldB-VCb-h-RcDoGEaY5FliNk40EWF33SJZAiQB_______________________pri7QdXcmXf9_lEUeBh4WPGECAQQDSgAEBrbPzAjIZQbTVg_wyi-g-i5Y8enp3KEgIAp_3gVQHPFi9F4JBdAYY8OidIjbIitj_UW6hi4fYbTbheWaGoSu3hl2A2BvjwLY\\\",\\\"description\\\":\\\"Prove that the \\\\\\\"identity\\\\\\\" is the identity hidden in attestation contained in\\\\\\\"payload\\\\\\\".\\\",\\\"timestamp\\\":\\\"Tue Apr 27 2021 15:26:40 GMT+0200\\\",\\\"identifier\\\":\\\"email@test.com\\\",\\\"expirationTime\\\":\\\"Thu Apr 27 10051 14:26:39 GMT+0200\\\"},\\\"domain\\\":{\\\"name\\\":\\\"https://www.hotelbogota.com\\\",\\\"version\\\":\\\"0.1\\\",\\\"chainId\\\":42}}\"}";
+    String request = "{\"signatureInHex\":\"0x09f65bbe7214b73c09469f8bfe1d353f0f7192796d58ced1aef1eb3ec6fe9b9c7cf7db2b22277c3385851498b54af2690c255832ad1733f02c9646a5373d2a461c\",\"jsonSigned\":\"{\\\"types\\\":{\\\"AttestationUsage\\\":[{\\\"name\\\":\\\"payload\\\",\\\"type\\\":\\\"string\\\"},{\\\"name\\\":\\\"description\\\",\\\"type\\\":\\\"string\\\"},{\\\"name\\\":\\\"timestamp\\\",\\\"type\\\":\\\"string\\\"},{\\\"name\\\":\\\"identifier\\\",\\\"type\\\":\\\"string\\\"},{\\\"name\\\":\\\"expirationTime\\\",\\\"type\\\":\\\"string\\\"}],\\\"EIP712Domain\\\":[{\\\"name\\\":\\\"name\\\",\\\"type\\\":\\\"string\\\"},{\\\"name\\\":\\\"version\\\",\\\"type\\\":\\\"string\\\"},{\\\"name\\\":\\\"chainId\\\",\\\"type\\\":\\\"uint256\\\"}]},\\\"primaryType\\\":\\\"AttestationUsage\\\",\\\"message\\\":{\\\"payload\\\":\\\"MIIEkTCCAkAwggHtoAMCARICAQEwCQYHKoZIzj0EAjAOMQwwCgYDVQQDDANBTFgwIhgPMjAyMTA2MDQxMzE4NTVaGA8yMDMxMDYwMjEzMTg1NVowCzEJMAcGA1UEAwwAMIIBMzCB7AYHKoZIzj0CATCB4AIBATAsBgcqhkjOPQEBAiEA_____________________________________v___C8wRAQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHBEEEeb5mfvncu6xVoGKVzocLBwKb_NstzijZWfKBWxb4F5hIOtp3JqPEZV2k-_wOEQio_Re0SKaFVBmcR9CP-xDUuAIhAP____________________66rtzmr0igO7_SXozQNkFBAgEBA0IABNNj3-rhhwxBABhmJpTmPZzkcJ6mElV8GFTdL8aGGsseXxiO8jZNWjDMFSqKAPOHT8sVZV66_uNVTxKQgDgZ8_EwBwIBKgICBTmjVzBVMFMGCysGAQQBizpzeQEoAQH_BEEEBf4waGibxLr-xOtIPTqSyPUm7VhND0Wemc6TpRIpCgQVYa-Hh9BK_SkBIguxAbZb1l_SGiHV9mTj-uzDq4UDCTAJBgcqhkjOPQQCA0IAinACXPp7g1-0qeiY7YbkOTU7QTnRjYYebau00b_gY4cF4-WyyJjwt-bjYZ5sUe7udyWTXfEAUx5bj_2j4-NvhBsCAQEwgfwEQQQetkj_nYGbQHpsWNJ5eHI8TltFCsmJgzzs9v2HwxYM3gmt2VZXjp4go3k37qEfTU2rXXKDOCK7sM0lL_g54kG3BCAjO1u0RjSZjbq0V63PfoY523uML6bR_O0GlLio2bi7hwRBBCJXw-KIfozUijQ4CV-RHekt8f0jerUBwT7u97ep5oDfDgbhzP-Ej7wGyBKlcgc-rrZeNVdUgWf2YZB23O1zIn8EUjBYNUY3QkZFNzUyQUMxQTQ1RjY3NDk3RDlEQ0REOUJCREE1MEE4Mzk1NcBxJpS6VWwViG_3TFMX3w_C5Rk1h9lTxNkbTSZP6dyrAAABedctNhgwggFHMIH4BgcqhkjOPQIBMIHsAgEBMCUGByqGSM49AQIwGgICARsGCSqGSM49AQIDAzAJAgEFAgEHAgEMMEwEJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBEkEBQMhP3jKRIg_GjuBYvGI5VPNJl8jwVZ6FodpE7DCrCRYSSg2AczaOA8cnjGNkPldB-VCb-h-RcDoGEaY5FliNk40EWF33SJZAiQB_______________________pri7QdXcmXf9_lEUeBh4WPGECAQQDSgAEBiGXQWvRblh9wc3pJCbRVWT_m-nmEKe2nnF9FCFok0REYcOtB16-13L2-J50QtaN3FmJbMlzlRQI2WbfDuGJ7dLGKCL8h0VP\\\",\\\"description\\\":\\\"Prove that the \\\\\\\"identifier\\\\\\\" is the identifier hidden in attestation contained in\\\\\\\"payload\\\\\\\".\\\",\\\"timestamp\\\":\\\"Fri Jun 4 2021 15:18:56 GMT+0200\\\",\\\"identifier\\\":\\\"email@test.com\\\",\\\"expirationTime\\\":\\\"Sun Jun 4 10051 14:18:55 GMT+0200\\\"},\\\"domain\\\":{\\\"name\\\":\\\"https://www.hotelbogota.com\\\",\\\"version\\\":\\\"0.1\\\",\\\"chainId\\\":42}}\"}";
     Eip712AttestationUsage eiprequest = new Eip712AttestationUsage(DOMAIN, attestorKeys.getPublic(),
         Timestamp.UNLIMITED, 42, request);
     assertTrue(eiprequest.verify());
@@ -233,7 +233,7 @@ public class TestAttestationUsageEip712 {
     AsymmetricCipherKeyPair otherUserKeys = SignatureUtility.constructECKeysWithSmallestY(rand);
     IdentifierAttestation att = HelperTest
         .makeUnsignedStandardAtt(otherUserKeys.getPublic(), attestorKeys.getPublic(), ATTESTATION_SECRET, MAIL);
-    SignedIdentityAttestation otherSingedAttestation = new SignedIdentityAttestation(att, attestorKeys);
+    SignedIdentifierAttestation otherSingedAttestation = new SignedIdentifierAttestation(att, attestorKeys);
     UseAttestation usage = new UseAttestation(otherSingedAttestation, TYPE, pok, sessionKey);
     Eip712AttestationUsage request = new Eip712AttestationUsage(DOMAIN, MAIL, usage, userSigningKey);
     assertFalse(request.checkTokenValidity());

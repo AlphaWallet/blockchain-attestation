@@ -17,9 +17,9 @@ export class IdentifierAttestation extends Attestation {
         this.setRiddle(riddle);
     }
 
-    static fromData(identity: string, type: number, keys: KeyPair, secret: bigint){
+    static fromData(identifier: string, type: number, keys: KeyPair, secret: bigint){
         let crypto = new AttestationCrypto();
-        let riddle = crypto.makeCommitment(identity, type, secret);
+        let riddle = crypto.makeCommitment(identifier, type, secret);
         return new this(riddle, keys);
     }
 

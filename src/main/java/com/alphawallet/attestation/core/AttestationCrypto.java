@@ -75,30 +75,30 @@ public class AttestationCrypto {
 
   /**
    * Construct a Pedersen commitment to an identifier using a specific secret.
-   * @param identity The common identifier
+   * @param identifier The common identifier
    * @param type The type of identifier
    * @param secret The secret randomness to be used in the commitment
    * @return
    */
-  public static byte[] makeCommitment(String identity, AttestationType type, BigInteger secret) {
-    BigInteger hashedIdentity = mapToCurveMultiplier(type, identity);
+  public static byte[] makeCommitment(String identifier, AttestationType type, BigInteger secret) {
+    BigInteger hashedIdentifier = mapToCurveMultiplier(type, identifier);
     // Construct Pedersen commitment
-    ECPoint commitment = G.multiply(hashedIdentity).add(H.multiply(secret));
+    ECPoint commitment = G.multiply(hashedIdentifier).add(H.multiply(secret));
     return commitment.getEncoded(false);
   }
 
   /**
-   * Constructs a commitment to an identity based on hidden randomization supplied from a user.
+   * Constructs a commitment to an identifier based on hidden randomization supplied from a user.
    * This is used to construct an attestation.
-   * @param identity The user's identity.
-   * @param type The type of identity.
+   * @param identifier The user's identifier.
+   * @param type The type of identifier.
    * @param hiding The hiding the user has picked
    * @return
    */
-  public static byte[] makeCommitment(String identity, AttestationType type, ECPoint hiding) {
-    BigInteger hashedIdentity = mapToCurveMultiplier(type, identity);
+  public static byte[] makeCommitment(String identifier, AttestationType type, ECPoint hiding) {
+    BigInteger hashedIdentifier = mapToCurveMultiplier(type, identifier);
     // Construct Pedersen commitment
-    ECPoint commitment = G.multiply(hashedIdentity).add(hiding);
+    ECPoint commitment = G.multiply(hashedIdentifier).add(hiding);
     return commitment.getEncoded(false);
   }
 
@@ -259,11 +259,11 @@ public class AttestationCrypto {
    * the uniformly random distribution between 0 and curveOrder -1.
    * This is done using deterministic rejection sampling based on the input.
    */
-  public static BigInteger mapToCurveMultiplier(AttestationType type, String identity) {
-    byte[] identityBytes = identity.trim().toLowerCase().getBytes(StandardCharsets.UTF_8);
-    ByteBuffer buf = ByteBuffer.allocate(4 + identityBytes.length);
+  public static BigInteger mapToCurveMultiplier(AttestationType type, String identifier) {
+    byte[] identifierBytes = identifier.trim().toLowerCase().getBytes(StandardCharsets.UTF_8);
+    ByteBuffer buf = ByteBuffer.allocate(4 + identifierBytes.length);
     buf.putInt(type.ordinal());
-    buf.put(identityBytes);
+    buf.put(identifierBytes);
     BigInteger sampledVal = new BigInteger(1, buf.array());
     do {
       sampledVal = mapToInteger(sampledVal.toByteArray());

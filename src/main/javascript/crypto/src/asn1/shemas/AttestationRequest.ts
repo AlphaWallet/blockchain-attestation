@@ -4,7 +4,7 @@ import {Proof} from "./ProofOfExponentASN";
 
 // IdentifierType ::= INTEGER { email(0), phone(1)}
 
-class UnsignedIdentity {
+class UnsignedIdentifier {
 
     @AsnProp({ type: AsnPropTypes.VisibleString })
     public identifier: string;
@@ -17,10 +17,10 @@ class UnsignedIdentity {
 
 }
 
-export class Identity {
+export class Identifier {
 
-    @AsnProp({ type: UnsignedIdentity })
-    public unsignedIdentity: UnsignedIdentity;
+    @AsnProp({ type: UnsignedIdentifier })
+    public unsignedIdentifier: UnsignedIdentifier;
 
     @AsnProp({ type: SubjectPublicKeyInfo })
     public publicKey: SubjectPublicKeyInfo;

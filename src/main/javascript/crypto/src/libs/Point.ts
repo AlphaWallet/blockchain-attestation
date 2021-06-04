@@ -28,7 +28,7 @@ export let CURVE_BN256 = {
 };
 
 export class Point {
-    //static ZERO = new Point(0n, 0n); // Point at infinity aka identity point aka zero
+    //static ZERO = new Point(0n, 0n); // Point at infinity aka identifier point aka zero
     constructor(public x: bigint, public y: bigint, private useCurve: {[index: string]:bigint} = CURVE_SECP256k1 ) {}
 
     // Adds point to itself. http://hyperelliptic.org/EFD/g1p/auto-shortw.html

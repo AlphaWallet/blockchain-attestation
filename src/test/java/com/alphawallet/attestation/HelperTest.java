@@ -54,7 +54,7 @@ public class HelperTest {
     Attestation att = new Attestation();
     att.setVersion(2); // =v3 since counting starts from 0
     att.setSerialNumber(42);
-    att.setSigningAlgorithm(SignedIdentityAttestation.ECDSA_WITH_SHA256); // ECDSA with SHA256 which is needed for a proper x509
+    att.setSigningAlgorithm(SignedIdentifierAttestation.ECDSA_WITH_SHA256); // ECDSA with SHA256 which is needed for a proper x509
     att.setIssuer("CN=ALX");
     Date now = new Date();
     att.setNotValidBefore(now);

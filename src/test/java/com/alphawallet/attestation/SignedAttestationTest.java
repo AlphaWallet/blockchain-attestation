@@ -38,7 +38,7 @@ public class SignedAttestationTest {
   @Test
   public void testSignAttestation() {
     IdentifierAttestation att = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), BigInteger.ONE, "some@mail.com" );
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, issuerKeys);
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, issuerKeys);
     assertTrue(signed.checkValidity());
     assertTrue(signed.verify());
     assertTrue(SignatureUtility.verifyEthereumSignature(att.getPrehash(), signed.getSignature(), issuerKeys.getPublic()));
@@ -48,11 +48,11 @@ public class SignedAttestationTest {
   @Test
   public void testDecoding() throws Exception {
     IdentifierAttestation att = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), BigInteger.ONE, "some@mail.com" );
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, issuerKeys);
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, issuerKeys);
     assertTrue(SignatureUtility.verifyEthereumSignature(att.getPrehash(), signed.getSignature(), issuerKeys.getPublic()));
     assertArrayEquals(att.getPrehash(), signed.getUnsignedAttestation().getPrehash());
     byte[] signedEncoded = signed.getDerEncoding();
-    SignedIdentityAttestation newSigned = new SignedIdentityAttestation(signedEncoded, issuerKeys.getPublic());
+    SignedIdentifierAttestation newSigned = new SignedIdentifierAttestation(signedEncoded, issuerKeys.getPublic());
     assertArrayEquals(signed.getDerEncoding(), newSigned.getDerEncoding());
   }
 
@@ -66,7 +66,7 @@ public class SignedAttestationTest {
     digest.update(toSign, 0, toSign.length);
     digest.doFinal(digestBytes, 0);
     byte[] signature = SignatureUtility.signHashedRandomized(digestBytes, issuerKeys.getPrivate());
-    byte[] signed = SignedIdentityAttestation.constructSignedAttestation(att, signature);
+    byte[] signed = SignedIdentifierAttestation.constructSignedAttestation(att, signature);
     // Test X509 compliance
     CertificateFactory fact = CertificateFactory.getInstance("X.509");
     ByteArrayInputStream stream = new ByteArrayInputStream(signed);

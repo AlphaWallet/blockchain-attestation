@@ -45,7 +45,7 @@ public class UseAttestationTest {
   public void sunshine() {
     FullProofOfExponent pok = crypto.computeAttestationProof(SECRET1);
     IdentifierAttestation att = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), issuerKeys.getPublic(), SECRET2, ID);
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, issuerKeys);
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, issuerKeys);
     UseAttestation useAttestation = new UseAttestation(signed, TYPE, pok, sessionKey);
     assertTrue(useAttestation.verify());
     assertTrue(useAttestation.checkValidity());
@@ -55,7 +55,7 @@ public class UseAttestationTest {
   public void consistentDecoding() throws Exception {
     FullProofOfExponent pok = crypto.computeAttestationProof(SECRET1, NONCE);
     IdentifierAttestation att = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), issuerKeys.getPublic(), SECRET2, ID);
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, issuerKeys);
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, issuerKeys);
     UseAttestation useAttestation = new UseAttestation(signed, TYPE, pok, sessionKey);
     UseAttestation otherConstructor = new UseAttestation(useAttestation.getDerEncoding(), issuerKeys.getPublic());
     assertTrue(otherConstructor.verify());
@@ -80,7 +80,7 @@ public class UseAttestationTest {
     FullProofOfExponent badPok = new FullProofOfExponent(pok.getRiddle(), pok.getPoint(), pok.getChallenge(), new byte[] {0x01} );
     assertFalse(AttestationCrypto.verifyFullProof(badPok));
     IdentifierAttestation att = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), issuerKeys.getPublic(), SECRET2, ID);
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, issuerKeys);
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, issuerKeys);
     assertThrows(IllegalArgumentException.class, ()-> new UseAttestation(signed, TYPE, badPok, sessionKey));
   }
 

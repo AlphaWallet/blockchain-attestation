@@ -1,19 +1,21 @@
 package io.alchemynft.attestation;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.alphawallet.attestation.IdentifierAttestation;
+import com.alphawallet.attestation.SignedIdentifierAttestation;
 import com.alphawallet.attestation.core.SignatureUtility;
 import com.alphawallet.attestation.demo.SmartContract;
 import com.alphawallet.ethereum.AttestationReturn;
 import com.alphawallet.ethereum.ERC721Token;
 import com.alphawallet.token.tools.Numeric;
-import com.alphawallet.attestation.IdentifierAttestation;
-import com.alphawallet.attestation.SignedIdentityAttestation;
+import java.security.SecureRandom;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-
-import java.security.SecureRandom;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 public class NFTSmartContractTest {
     private static AsymmetricCipherKeyPair subjectKeys;
@@ -22,9 +24,9 @@ public class NFTSmartContractTest {
     private static SecureRandom rand;
     /*
         IdentifierAttestation att = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), BigInteger.ONE, "some@mail.com" );
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, issuerKeys);
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, issuerKeys);
      */
-    static SignedIdentityAttestation attestation;
+    static SignedIdentifierAttestation attestation;
     private SignedNFTAttestation nftAttestation;
     private final SmartContract contract = new SmartContract();
     // the URL as King Mida's public ID, plus a label (in case of twitter, the permanent numeric ID)
@@ -42,7 +44,7 @@ public class NFTSmartContractTest {
         att.setIssuer("CN=attestation.id");
         att.setSerialNumber(1);
         assertTrue(att.checkValidity());
-        attestation = new SignedIdentityAttestation(att, attestorKeys);
+        attestation = new SignedIdentifierAttestation(att, attestorKeys);
 
         System.out.println("SubjectPublicKey's Fingerprint (summarised as Ethereum address):\n" + SignatureUtility.addressFromKey(subjectKeys.getPublic()));
     }
@@ -56,7 +58,7 @@ public class NFTSmartContractTest {
 
         NFTAttestation nftAtt = new NFTAttestation(attestation, myNFTs);
         //construct SignedNFTAttestation using subject key
-        nftAttestation = new SignedNFTAttestation(nftAtt, subjectKeys); // <-- signing step, NFT attestation is signed by owner of identity, referenced below
+        nftAttestation = new SignedNFTAttestation(nftAtt, subjectKeys); // <-- signing step, NFT attestation is signed by owner of identifier, referenced below
 
         System.out.println("DER: " + Numeric.toHexString(nftAttestation.getDerEncoding()));
 
@@ -86,7 +88,7 @@ public class NFTSmartContractTest {
         // 'subjectKeys' then the verification step is skipped since we have 'subjectKeys' signature from the ethereum transaction
         AttestationReturn atr = contract.callVerifyNFTAttestation(nftAttestation.getDerEncoding(), SignatureUtility.addressFromKey(issuerKeys.getPublic()));
         //check our return
-        assertEquals(atr.identity, labeledURI);
+        assertEquals(atr.identifier, labeledURI);
         assertEquals(atr.ownerAddress.toLowerCase(), SignatureUtility.addressFromKey(subjectKeys.getPublic()).toLowerCase());
         assertEquals(atr.attestorAddress.toLowerCase(), SignatureUtility.addressFromKey(attestorKeys.getPublic()).toLowerCase());
         assertTrue(atr.isValid);

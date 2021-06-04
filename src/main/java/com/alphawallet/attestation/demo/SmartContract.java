@@ -4,7 +4,7 @@ import static org.web3j.protocol.core.methods.request.Transaction.createEthCallT
 
 import com.alphawallet.attestation.FullProofOfExponent;
 import com.alphawallet.attestation.ProofOfExponent;
-import com.alphawallet.attestation.SignedIdentityAttestation;
+import com.alphawallet.attestation.SignedIdentifierAttestation;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -49,7 +49,7 @@ public class SmartContract {
     return callFunction(function);
   }
 
-  public List<Address> getAttestationAddresses(SignedIdentityAttestation signedAttestation)
+  public List<Address> getAttestationAddresses(SignedIdentifierAttestation signedAttestation)
   {
     Function function = verifyPublicAttestation(signedAttestation.getDerEncoding());
     return callAddrFunction(function);
@@ -68,7 +68,7 @@ public class SmartContract {
       List<ERC721TokenEth> tokens = (List<ERC721TokenEth>)responseValues.get(0).getValue();
       retVal.ercToken = tokens.toArray(new ERC721TokenEth[0]);
 
-      retVal.identity = responseValues.get(1).getValue().toString();
+      retVal.identifier = responseValues.get(1).getValue().toString();
       retVal.ownerAddress = responseValues.get(2).getValue().toString();
       retVal.attestorAddress = responseValues.get(3).getValue().toString();
       retVal.isValid = (boolean)responseValues.get(4).getValue();

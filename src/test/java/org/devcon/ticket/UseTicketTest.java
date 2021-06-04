@@ -12,7 +12,7 @@ import com.alphawallet.attestation.AttestedObject;
 import com.alphawallet.attestation.HelperTest;
 import com.alphawallet.attestation.IdentifierAttestation;
 import com.alphawallet.attestation.ProofOfExponent;
-import com.alphawallet.attestation.SignedIdentityAttestation;
+import com.alphawallet.attestation.SignedIdentifierAttestation;
 import com.alphawallet.attestation.core.AttestationCrypto;
 import com.alphawallet.attestation.core.DERUtility;
 import com.alphawallet.attestation.core.SignatureUtility;
@@ -61,7 +61,7 @@ public class UseTicketTest {
   @BeforeEach
   public void makeAttestedTicket() {
     IdentifierAttestation att = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), ATTESTATION_SECRET, MAIL );
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, attestorKeys);
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, attestorKeys);
     Ticket ticket = new Ticket(MAIL, CONFERENCE_ID, TICKET_ID, TICKET_CLASS, ticketIssuerKeys, TICKET_SECRET);
     attestedTicket = new AttestedObject<Ticket>(ticket, signed, subjectKeys, ATTESTATION_SECRET, TICKET_SECRET, crypto);
     assertTrue(attestedTicket.verify());
@@ -148,9 +148,9 @@ public class UseTicketTest {
     Attestation att = attestedTicket.getAtt().getUnsignedAttestation();
     Field field = att.getClass().getSuperclass().getDeclaredField("version");
     field.setAccessible(true);
-    // Invalid version for Identity Attestation along with failing signature
+    // Invalid version for Identifier Attestation along with failing signature
     field.set(att, new ASN1Integer(19));
-    // Only correctly formed Identity Attestations are allowed
+    // Only correctly formed Identifier Attestations are allowed
     assertFalse(att.checkValidity());
     assertFalse(attestedTicket.checkValidity());
     // Verification should also fail since signature is now invalid
@@ -180,7 +180,7 @@ public class UseTicketTest {
 
   @Test
   public void testNegativeDifferentKeys() throws Exception {
-    SignedIdentityAttestation att = attestedTicket.getAtt();
+    SignedIdentifierAttestation att = attestedTicket.getAtt();
     Field field = att.getClass().getDeclaredField("attestationVerificationKey");
     field.setAccessible(true);
     // Change public key
@@ -191,7 +191,7 @@ public class UseTicketTest {
   }
 
   @Test
-  public void testNegativeWrongProofIdentity() throws Exception {
+  public void testNegativeWrongProofIdentifier() throws Exception {
     // Wrong attestation secret
     ProofOfExponent newPok = crypto
         .computeEqualityProof(attestedTicket.getAtt().getUnsignedAttestation().getCommitment(), attestedTicket.getAttestableObject().getCommitment(), new BigInteger("42424242"), TICKET_SECRET);
@@ -225,7 +225,7 @@ public class UseTicketTest {
   @Test
   public void testNegativeConstruction() {
     IdentifierAttestation att = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), ATTESTATION_SECRET, MAIL);
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, attestorKeys);
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, attestorKeys);
     // Add an extra t in the mail
     Ticket ticket = new Ticket("testt@test.ts", CONFERENCE_ID, TICKET_ID, TICKET_CLASS, subjectKeys, TICKET_SECRET);
     try {
@@ -240,7 +240,7 @@ public class UseTicketTest {
   @Test
   public void testNegativeConstruction2() {
     IdentifierAttestation att = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), ATTESTATION_SECRET, MAIL);
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, attestorKeys);
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, attestorKeys);
     Ticket ticket = new Ticket(MAIL, CONFERENCE_ID, TICKET_ID, TICKET_CLASS, subjectKeys, TICKET_SECRET);
     try {
       // Wrong subject secret
@@ -271,7 +271,7 @@ public class UseTicketTest {
   @Test
   public void testNonAttestedSigningKey() {
     IdentifierAttestation att = HelperTest.makeUnsignedStandardAtt(subjectKeys.getPublic(), ATTESTATION_SECRET, MAIL );
-    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, attestorKeys);
+    SignedIdentifierAttestation signed = new SignedIdentifierAttestation(att, attestorKeys);
     Ticket ticket = new Ticket(MAIL, CONFERENCE_ID, TICKET_ID, TICKET_CLASS, ticketIssuerKeys, TICKET_SECRET);
     AsymmetricCipherKeyPair newKeys = SignatureUtility.constructECKeysWithSmallestY(rand);
     attestedTicket = new AttestedObject<Ticket>(ticket, signed, newKeys, ATTESTATION_SECRET, TICKET_SECRET, crypto);

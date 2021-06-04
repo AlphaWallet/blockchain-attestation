@@ -136,12 +136,15 @@ public class Ticket implements Attestable {
     return encoded;
   }
 
-  /*
-   * TODO: there must be a way to not throw java.io.IOException here.
-   */
-  public String getUrlEncoding() throws java.io.IOException {
-    SubjectPublicKeyInfo keyInfo = SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(this.publicKey);
-    return URLUtility.encodeList(Arrays.asList(this.encoded, keyInfo.getPublicKeyData().getEncoded()));
+  public String getUrlEncoding()  {
+    try {
+      SubjectPublicKeyInfo keyInfo = SubjectPublicKeyInfoFactory
+          .createSubjectPublicKeyInfo(this.publicKey);
+      return URLUtility
+          .encodeList(Arrays.asList(this.encoded, keyInfo.getPublicKeyData().getEncoded()));
+    } catch (IOException e) {
+      throw ExceptionUtil.makeRuntimeException(logger, "Could not encode public key", e);
+    }
   }
 
   @Override

@@ -25,7 +25,7 @@ import org.bouncycastle.crypto.util.PublicKeyFactory;
 public class AttestedObject<T extends Attestable> implements ASNEncodable, Verifiable {
   private static final Logger logger = LogManager.getLogger(AttestedObject.class);
   private final T attestableObject;
-  private final SignedIdentityAttestation att;
+  private final SignedIdentifierAttestation att;
   private final ProofOfExponent pok;
   private final byte[] signature;
 
@@ -34,7 +34,7 @@ public class AttestedObject<T extends Attestable> implements ASNEncodable, Verif
   private final byte[] unsignedEncoding;
   private final byte[] encoding;
 
-  public AttestedObject(T attestableObject, SignedIdentityAttestation att, AsymmetricCipherKeyPair userKeys,
+  public AttestedObject(T attestableObject, SignedIdentifierAttestation att, AsymmetricCipherKeyPair userKeys,
       BigInteger attestationSecret, BigInteger chequeSecret,
       AttestationCrypto crypto) {
     this.attestableObject = attestableObject;
@@ -60,7 +60,7 @@ public class AttestedObject<T extends Attestable> implements ASNEncodable, Verif
     }
   }
 
-  public AttestedObject(T object, SignedIdentityAttestation att, ProofOfExponent pok, byte[] signature) {
+  public AttestedObject(T object, SignedIdentifierAttestation att, ProofOfExponent pok, byte[] signature) {
     this.attestableObject = object;
     this.att = att;
     this.pok = pok;
@@ -90,7 +90,7 @@ public class AttestedObject<T extends Attestable> implements ASNEncodable, Verif
       ASN1InputStream input = new ASN1InputStream(derEncoding);
       ASN1Sequence asn1 = ASN1Sequence.getInstance(input.readObject());
       this.attestableObject = decoder.decode(asn1.getObjectAt(0).toASN1Primitive().getEncoded());
-      this.att = new SignedIdentityAttestation(asn1.getObjectAt(1).toASN1Primitive().getEncoded(), attestationVerificationKey);
+      this.att = new SignedIdentifierAttestation(asn1.getObjectAt(1).toASN1Primitive().getEncoded(), attestationVerificationKey);
       this.pok = new UsageProofOfExponent(asn1.getObjectAt(2).toASN1Primitive().getEncoded());
       this.unsignedEncoding = new DERSequence(Arrays.copyOfRange(asn1.toArray(), 0, 3)).getEncoded();
       if (asn1.size() > 3) {
@@ -114,7 +114,7 @@ public class AttestedObject<T extends Attestable> implements ASNEncodable, Verif
     return attestableObject;
   }
 
-  public SignedIdentityAttestation getAtt() {
+  public SignedIdentifierAttestation getAtt() {
     return att;
   }
 
@@ -135,11 +135,11 @@ public class AttestedObject<T extends Attestable> implements ASNEncodable, Verif
    * @return true if the redeem request should be accepted by the smart contract
    */
   public boolean checkValidity() {
-    // CHECK: that it is an identity attestation otherwise not all the checks of validity needed gets carried out
+    // CHECK: that it is an identifier attestation otherwise not all the checks of validity needed gets carried out
     try {
       byte[] attEncoded = att.getUnsignedAttestation().getDerEncoding();
       IdentifierAttestation std = new IdentifierAttestation(attEncoded);
-      // CHECK: perform the needed checks of an identity attestation
+      // CHECK: perform the needed checks of an identifier attestation
       if (!std.checkValidity()) {
         logger.error("The attestation is not a valid standard attestation");
         return false;
