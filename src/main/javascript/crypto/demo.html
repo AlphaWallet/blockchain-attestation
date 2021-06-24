@@ -12,6 +12,11 @@
 </head>
 <body>
 <div id="log"></div>
+    <script type="text/javascript" src="assets/js/buffer.js"></script>
+<script>
+    Buffer = buffer.Buffer;
+    process = {env: {NODE_DEBUG: "false"}};
+</script>
     <script type="text/javascript" src="dist/authenticator.js"></script>
 <script>
     counter = 1;
@@ -34,15 +39,94 @@
         }
     }
 
-    (async ()=>{
+    function testUseAttest(){
+        // const sessionPrivPEM = readFileSync(PREFIX_PATH + 'session-priv.pem', 'utf8');
+        // let sessionKey = KeyPair.privateFromPEM(sessionPrivPEM);
+        //
+        // const userPrivPEM = "";
+        // let userKey = KeyPair.privateFromPEM(userPrivPEM);
 
-        // let base64ticket = "MIGXMAkCAQYCAW8CAQAEQQQvZiRvuwETD_9d_eDp_4b0o0caeQ9FZ7e8hsxMi7SNsx-xkbfqtaNONRXQzQ1wO95bOVk3BRSdbQBNVLox62pCA0cAMEQCIFavePjptmgxBsVuHp7bZSDxK0ovB8d9URp2VjiGos56AiA9apKTL6Kk74Jgf2H7Mb4EZqlsdwJLXSN23sC6aoRyKg==";
+        const attestationPEM = "MIICeDCCAh6gAwIBEgIIbeQOqSEKN2swCgYIKoZIzj0EAwIwFjEUMBIGA1UEAwwLQWxwaGFXYWxsZXQwIhgPMjAyMTA0MDcwOTA1MTNaGA8yMDIxMDQwNzA5MjUxM1owNTEzMDEGA1UEAwwqMHg1RjdCRkU3NTJBQzFBNDVGNjc0OTdEOURDREQ5QkJEQTUwQTgzOTU1MIIBMzCB7AYHKoZIzj0CATCB4AIBATAsBgcqhkjOPQEBAiEA/////////////////////////////////////v///C8wRAQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHBEEEeb5mfvncu6xVoGKVzocLBwKb/NstzijZWfKBWxb4F5hIOtp3JqPEZV2k+/wOEQio/Re0SKaFVBmcR9CP+xDUuAIhAP////////////////////66rtzmr0igO7/SXozQNkFBAgEBA0IABNNj3+rhhwxBABhmJpTmPZzkcJ6mElV8GFTdL8aGGsseXxiO8jZNWjDMFSqKAPOHT8sVZV66/uNVTxKQgDgZ8/GjVzBVMFMGCysGAQQBizpzeQEoAQH/BEEEIKilq81bkMqQGTE52CDog4p3n71zqyrHze/XuXi+AQMXDwbVA2oNuNwdMifdXFdJFTgtmJb79LIxpJA4mw69CjAKBggqhkjOPQQDAgNIADBFAiEA/fMRdG0t1Ti1ELETjYUsYPNtPfd/SRkmTCKH8hB0UC0CIBaXaudHXwt+rrlCM5zqzIHt8tUCV3mcmRkfPlwpLRTI";
+
+
+        const attestorPubPEM = "MIIBMzCB7AYHKoZIzj0CATCB4AIBATAsBgcqhkjOPQEBAiEA/////////////////////////////////////v///C8wRAQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHBEEEeb5mfvncu6xVoGKVzocLBwKb/NstzijZWfKBWxb4F5hIOtp3JqPEZV2k+/wOEQio/Re0SKaFVBmcR9CP+xDUuAIhAP////////////////////66rtzmr0igO7/SXozQNkFBAgEBA0IABOpPjYi/lziShCYFWr6qEndD9VErWApZc0MmkmWS4V2gV6QqQNjGvmV2Itkn34SYivvUWXqpjFb+BffWr6ODGdA=";
+
+        const attestationSecretPEM = "MCIEICsSh4DNmw+3KRfcWezYOhVLgJk9DkY86OkDs3hZnPsF";
+
+        let email = "test@test.ts";
+        let type = "mail";
+        let WEB_DOMAIN = "http://wwww.hotelbogota.com";
+
+        try {
+            Authenticator.useAttest(
+                // userKeyBase64,
+                attestationPEM,
+                attestationSecretPEM,
+                attestorPubPEM, email, type, WEB_DOMAIN).then(console.log);
+        } catch (e){
+            console.error(e);
+            throw new Error('useAttestRes failed');
+        }
+    }
+
+    (async ()=>{
+        let attest = new Attest();
+        writeToLog('prepare and sign attestRequest.');
+        let secret = BigInt(12345);
+        let receiverId = "test@test.com";
+        let ATTESTOR_DOMAIN = "http://wwww.attestation.id";
+
+        // getAttestation() {
+
+        // Request attestation
+        // "user-priv.pem", "test@test.ts", "mail"
+
+        let attestJson = await Authenticator.requestAttest(receiverId, "mail", ATTESTOR_DOMAIN, secret);
+        writeToLog('attestRequest received:');
+        writeToLog(attestJson);
+
+        // Construct attestation
+        // args = new String[]{"construct-attest", PREFIX + "attestor-priv.pem", "AlphaWallet", "3600", PREFIX + "attestation-request.json", PREFIX + "attestation.crt"};
+        // Demo.main(args);
+
+
+        // executeEipFlow
+
+
+
+
+        writeToLog('create attestation');
+
         let base64ticket = "MIGbMA0CAQYCBWE3ap3-AgEABEEEKJZVxMEXbkSZZBWnNUTX_5ieu8GUqf0bx_a0tBPF6QYskABaMJBYhDOXsmQt3csk_TfMZ2wdmfRkK7ePCOI2kgNHADBEAiBwLK_95NPZo0W01HDBfyZisZ2KaNrzoWuxRV-nhjGLMAIgaOP4eVVINH5xM8Cv9OVDdyOG3BxUqyPVQOuDU9PaC9o=";
         // let ticketSecret =45845870611;
         let ticketSecret =45845870684;
 
         writeToLog('base64ticket: ' + base64ticket);
         writeToLog('ticketSecret: ' + ticketSecret);
+
+        let attestorPrivateKey = "-----BEGIN CHEQUE-----\n" +
+            "MIICSwIBADCB7AYHKoZIzj0CATCB4AIBATAsBgcqhkjOPQEBAiEA////////////\n" +
+            "/////////////////////////v///C8wRAQgAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n" +
+            "AAAAAAAAAAAAAAAEIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHBEEE\n" +
+            "eb5mfvncu6xVoGKVzocLBwKb/NstzijZWfKBWxb4F5hIOtp3JqPEZV2k+/wOEQio\n" +
+            "/Re0SKaFVBmcR9CP+xDUuAIhAP////////////////////66rtzmr0igO7/SXozQ\n" +
+            "NkFBAgEBBIIBVTCCAVECAQEEIIl3HJrX0OAEtiZWlqGDCOtSmpZv5o6kasujb/47\n" +
+            "kGWsoIHjMIHgAgEBMCwGByqGSM49AQECIQD/////////////////////////////\n" +
+            "///////+///8LzBEBCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQg\n" +
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcEQQR5vmZ++dy7rFWgYpXO\n" +
+            "hwsHApv82y3OKNlZ8oFbFvgXmEg62ncmo8RlXaT7/A4RCKj9F7RIpoVUGZxH0I/7\n" +
+            "ENS4AiEA/////////////////////rqu3OavSKA7v9JejNA2QUECAQGhRANCAATq\n" +
+            "T42Iv5c4koQmBVq+qhJ3Q/VRK1gKWXNDJpJlkuFdoFekKkDYxr5ldiLZJ9+EmIr7\n" +
+            "1Fl6qYxW/gX31q+jgxnQ\n" +
+            "-----END CHEQUE----- ";
+
+        // Authenticator.createAttest(attestorPrivateKey,'AlphaWallet', 60*60*1000, attestJson, ATTESTOR_DOMAIN);
+
+        testUseAttest();
+
+
+
+        return;
 
         (new Authenticator()).getAuthenticationBlob({
             ticketBlob: base64ticket,

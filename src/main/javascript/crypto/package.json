@@ -4,27 +4,42 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "build": "webpack",
-    "watch": "webpack --watch --progress"
+    "watch": "webpack --watch --progress",
+    "test": "jest"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@types/asn1js": "^2.0.0",
+    "@types/jest": "^26.0.20",
+    "@types/node": "^14.14.28",
     "@types/pvutils": "^1.0.0",
+    "assert": "^2.0.0",
+    "buffer": "^6.0.3",
+    "jest": "^26.6.3",
     "source-map-loader": "^1.1.3",
+    "stream-browserify": "^3.0.0",
+    "ts-jest": "^26.5.1",
     "ts-loader": "^8.0.12",
-    "typescript": "^4.1.3",
+    "typescript": "^4.1.5",
     "webpack": "^5.10.1",
     "webpack-cli": "^4.2.0"
+  },
+  "browser": {
+    "crypto": false
   },
   "dependencies": {
     "@lapo/asn1js": "^1.2.1",
     "@peculiar/asn1-schema": "^2.0.27",
     "asn1js": "^2.0.26",
+    "crypto": "^1.0.1",
     "elliptic": "^6.5.3",
-    "js-sha3": "^0.8.0"
+    "ethers": "^5.0.31",
+    "js-sha3": "^0.8.0",
+    "jsonwebtoken": "^8.5.1",
+    "string.prototype.matchall": "^4.0.4",
+    "url": "^0.11.0"
   }
 }

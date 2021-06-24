@@ -11,6 +11,9 @@ export class Proof {
     @AsnProp({ type: AsnPropTypes.OctetString })
     public responseValue: Uint8Array;
 
+    @AsnProp({ type: AsnPropTypes.OctetString })
+    public nonce: Uint8Array;
+
 }
 
 export class UsageProof {
@@ -20,5 +23,8 @@ export class UsageProof {
 
     @AsnProp({ type: AsnPropTypes.OctetString })
     public responseValue: Uint8Array;
+
+    @AsnProp({ type: AsnPropTypes.OctetString })
+    public nonce: Uint8Array;
 
 }

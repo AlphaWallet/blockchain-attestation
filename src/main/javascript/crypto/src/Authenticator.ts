@@ -1,12 +1,25 @@
-import {SignedDevconTicket} from "./asn1/shemas/SignedDevconTicket";
 import {Ticket} from "./Ticket";
-import {TicketDecoder} from "./TicketDecoder";
 import {KeyPair} from "./libs/KeyPair";
-import {base64ToUint8array, uint8ToBn, uint8tohex} from "./libs/utils";
-import {SubjectPublicKeyInfo} from "./asn1/shemas/AttestationFramework";
-import {AsnParser} from "@peculiar/asn1-schema";
-import {SignedAttestation} from "./libs/SignedAttestation";
+import {base64ToUint8array, uint8ToBn} from "./libs/utils";
+import {SignedIdentityAttestation} from "./libs/SignedIdentityAttestation";
 import {AttestedObject} from "./libs/AttestedObject";
+import {XMLconfigData} from "./data/tokenData";
+import {AttestationCrypto} from "./libs/AttestationCrypto";
+import {AttestationRequest} from "./libs/AttestationRequest";
+import {Nonce} from "./libs/Nonce";
+import {Eip712AttestationRequest} from "./libs/Eip712AttestationRequest";
+import {IdentifierAttestation} from "./libs/IdentifierAttestation";
+import {SignatureUtility} from "./libs/SignatureUtility";
+import {FullProofOfExponent} from "./libs/FullProofOfExponent";
+import {UseAttestation} from "./libs/UseAttestation";
+import {Eip712AttestationUsage} from "./libs/Eip712AttestationUsage";
+import {Verifiable} from "./libs/Verifiable";
+import {TokenValidateable} from "./libs/TokenValidateable";
+import {Eip712AttestationRequestWithUsage} from "./libs/Eip712AttestationRequestWithUsage";
+import {AttestationRequestWithUsage} from "./libs/AttestationRequestWithUsage";
+import {Validateable} from "./libs/Validateable";
+
+const { subtle } = require('crypto').webcrypto;
 
 declare global {
     interface Window {
@@ -14,6 +27,22 @@ declare global {
         detachEvent: any;
     }
 }
+
+const ALPHA_CONFIG = {
+    indexedDBname: "AlphaDB",
+    indexedDBobject: "AlphaKeyStore",
+    indexedDBid: "TK",
+    keysAlgorithm: {
+        name: "ECDSA",
+        // namedCurve: "P-384"
+        namedCurve: "P-256"
+    },
+    signAlgorithm: {
+        name: "ECDSA",
+        // hash: {name: "SHA-384"},
+        hash: {name: "SHA-256"},
+    }
+};
 
 export interface devconToken {
     ticketBlob: string,
@@ -36,27 +65,14 @@ export class Authenticator {
     private base64senderPublicKey: string;
     private base64attestorPubKey: string;
 
+    private webDomain: string;
+
     constructor(private negotiator: any = false) {
-        let XMLconfig = {
-            attestationOrigin: "http://stage.attestation.id",
-            tokensOrigin: "https://devcontickets.herokuapp.com/outlet/",
-            tokenUrlName: 'ticket',
-            tokenSecretName: 'secret',
-            unsignedTokenDataName: 'ticket',
-            // tokenParserUrl: '',
-            tokenParser: SignedDevconTicket,
-            localStorageItemName: 'dcTokens',
-            base64senderPublicKey: '04950C7C0BED23C3CAC5CC31BBB9AAD9BB5532387882670AC2B1CDF0799AB0EBC764C267F704E8FDDA0796AB8397A4D2101024D24C4EFFF695B3A417F2ED0E48CD',
-
-            base64attestorPubKey:
-                // stage.attestation.id public key
-                "MIIBMzCB7AYHKoZIzj0CATCB4AIBATAsBgcqhkjOPQEBAiEA/////////////////////////////////////v///C8wRAQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHBEEEeb5mfvncu6xVoGKVzocLBwKb/NstzijZWfKBWxb4F5hIOtp3JqPEZV2k+/wOEQio/Re0SKaFVBmcR9CP+xDUuAIhAP////////////////////66rtzmr0igO7/SXozQNkFBAgEBA0IABL+y43T1OJFScEep69/yTqpqnV/jzONz9Sp4TEHyAJ7IPN9+GHweCX1hT4OFxt152sBN3jJc1s0Ymzd8pNGZNoQ="
-        };
-
-        // this.negotiator = negotiator;
+        let XMLconfig = XMLconfigData;
 
         this.base64senderPublicKey = XMLconfig.base64senderPublicKey;
         this.base64attestorPubKey = XMLconfig.base64attestorPubKey;
+        this.webDomain = XMLconfig.webDomain;
     }
 
     getAuthenticationBlob(tokenObj: devconToken, authResultCallback: Function) {
@@ -72,7 +88,6 @@ export class Authenticator {
         this.signedTokenSecret = tokenObj.ticketSecret;
         this.attestationOrigin = tokenObj.attestationOrigin;
         this.authResultCallback = authResultCallback;
-        // TODO temporary disable, while stage.attestaion.id broken
         this.getIdentifierAttestation();
 
     }
@@ -99,7 +114,7 @@ export class Authenticator {
         document.body.appendChild(iframeWrap);
     }
 
-    getUseTicket(
+    async getUseTicket(
         // userKey: KeyPair,
         ticketSecret: bigint,
         attestationSecret: bigint,
@@ -109,8 +124,8 @@ export class Authenticator {
         base64senderPublicKey: string
     )
     {
-
-        let ticket: Ticket = TicketDecoder.fromBase64(base64ticket, KeyPair.fromPublicHex(base64senderPublicKey));
+        // let ticket: Ticket = Ticket.fromBase64(base64ticket, KeyPair.fromPublicHex(base64senderPublicKey));
+        let ticket: Ticket = Ticket.fromBase64(base64ticket, KeyPair.publicFromBase64(base64senderPublicKey));
         if (!ticket.checkValidity()) {
             console.log("Could not validate cheque");
             throw new Error("Validation failed");
@@ -121,13 +136,15 @@ export class Authenticator {
         }
         console.log('ticked valid (signature OK)');
 
-        let keyUint8data = base64ToUint8array(base64attestationPublicKey);
-        let key:SubjectPublicKeyInfo = AsnParser.parse(keyUint8data, SubjectPublicKeyInfo);
+        // let keyUint8data = base64ToUint8array(base64attestationPublicKey);
+        // let key:SubjectPublicKeyInfo = AsnParser.parse(keyUint8data, SubjectPublicKeyInfo);
 
-        let attestorKey = KeyPair.fromPublicHex(uint8tohex(new Uint8Array(key.value.subjectPublicKey)));
+        // let attestorKey = KeyPair.fromPublicHex(uint8tohex(new Uint8Array(key.value.publicKey)));
+        let attestorKey = KeyPair.publicFromBase64(base64attestationPublicKey);
 
         console.log('lets test attestaion:');
-        let att = new SignedAttestation(base64attestation, attestorKey);
+
+        let att = SignedIdentityAttestation.fromBytes(base64ToUint8array(base64attestation), attestorKey);
 
         if (!att.checkValidity()) {
             console.log("Could not validate attestation");
@@ -139,14 +156,17 @@ export class Authenticator {
         }
         console.log('attestaion valid');
 
-        let redeem: AttestedObject = new AttestedObject(
-            ticket, att,
+        let redeem: AttestedObject = new AttestedObject();
+        redeem.create(ticket, att,
             BigInt(attestationSecret), BigInt(ticketSecret));
+        redeem.setWebDomain(this.webDomain);
 
         // console.log("redeem.getDerEncodeProof(): ");
         // console.log(redeem.getDerEncodeProof());
-
-        return redeem.getDerEncodeProof();
+        // TODO sign EIP712 with Metamask
+        let signed = await redeem.sign();
+        console.log(signed);
+        return signed;
 
     }
 
@@ -191,23 +211,31 @@ export class Authenticator {
         this.attestationBlob = event.data.attestation;
         this.attestationSecret = event.data.requestSecret;
 
-        console.log('attestation data received.');
+        // console.log('attestation data received.');
         // console.log(this.attestationBlob);
         // console.log(this.attestationSecret);
         // console.log(this.base64attestorPubKey);
 
         try {
-            let useToken = this.getUseTicket(
+            this.getUseTicket(
                 this.signedTokenSecret,
                 this.attestationSecret,
                 this.signedTokenBlob ,
                 this.attestationBlob ,
                 this.base64attestorPubKey,
                 this.base64senderPublicKey,
-            )
+            ).then(useToken => {
+                if (useToken){
+                    console.log('this.authResultCallback(useToken): ');
+                    this.authResultCallback(useToken);
+                } else {
+                    console.log('this.authResultCallback( empty sting ): ');
+                    this.authResultCallback(useToken);
+                }
 
-            console.log('this.authResultCallback(useToken)');
-            this.authResultCallback(useToken);
+            })
+
+
         } catch (e){
             console.log(`UseDevconTicket. Something went wrong. ${e}`);
             this.authResultCallback(false);
@@ -247,5 +275,299 @@ export class Authenticator {
 
     // getTokenAttestation(tokenObj) {
     // }
+
+    static async requestAttest( receiverId: string, type: string, attestorDomain: string, secret: bigint, userKey: KeyPair = null ){
+
+        let crypto = new AttestationCrypto();
+        let userAddress;
+        if (userKey) {
+            userAddress = userKey.getAddress();
+        } else {
+            try {
+                userAddress = await SignatureUtility.connectMetamaskAndGetAddress();
+            } catch (e){
+                console.log('Cant find user Ethereum Address. Please check Metamask. ' + e);
+                return;
+            }
+        }
+
+        let nonce = await Nonce.makeNonce(userAddress, attestorDomain);
+
+        let pok = crypto.computeAttestationProof(secret, nonce);
+        let attRequest = AttestationRequest.fromData(crypto.getType(type), pok);
+        let attest = new Eip712AttestationRequest(userKey);
+        await attest.addData(attestorDomain, 20*1000, receiverId, attRequest);
+        let attestJson = attest.getJsonEncoding();
+
+        return attestJson;
+
+    }
+
+    // static async constructAttest(
+    //     attestorKey: KeyPair,
+    //     receiverId: string,
+    //     type: string,
+    //     ATTESTOR_DOMAIN: string,
+    //     attestationSecretBase64: string,
+    //     sessionKey: KeyPair,
+    // ){
+    //
+    // }
+
+    static constructAttest(
+        attestorKey: KeyPair,
+        issuerName: string,
+        validityInMilliseconds: number ,
+        attestRequestJson: string,
+        attestorDomain: string ){
+        let att: IdentifierAttestation;
+        let crypto = new AttestationCrypto();
+        let attestationRequest;
+        let commitment;
+
+        try {
+            // decode JSON and fill publicKey
+            attestationRequest = new Eip712AttestationRequest();
+            attestationRequest.setDomain(attestorDomain);
+            attestationRequest.fillJsonData(attestRequestJson);
+
+            Authenticator.checkAttestRequestVerifiability(attestationRequest);
+            Authenticator.checkAttestRequestValidity(attestationRequest);
+
+        } catch (e){
+            let m = "Failed to fill attestation data from json. " + e + "\nRestores as an Eip712AttestationRequestWithUsage object instead";
+            console.log(m);
+            try {
+                attestationRequest = new Eip712AttestationRequestWithUsage();
+                attestationRequest.setDomain(attestorDomain);
+                attestationRequest.fillJsonData(attestRequestJson);
+                Authenticator.checkAttestRequestVerifiability(attestationRequest);
+                Authenticator.checkAttestRequestValidity(attestationRequest);
+            } catch (e) {
+                let m = "Failed to parse Eip712AttestationRequestWithUsage. " + e;
+                console.log(m);
+                throw new Error(m);
+            }
+        }
+
+        commitment = crypto.makeCommitmentFromHiding(attestationRequest.getIdentifier(), attestationRequest.getType(), attestationRequest.getPok().getRiddle());
+
+        att = new IdentifierAttestation();
+        att.fromCommitment(commitment, attestationRequest.getUserPublicKey());
+        att.setIssuer("CN=" + issuerName);
+        att.setSerialNumber(Math.round(Math.random() * Number.MAX_SAFE_INTEGER) );
+        let now = Date.now();
+        att.setNotValidBefore(now);
+        att.setNotValidAfter(now + validityInMilliseconds);
+        let signed: SignedIdentityAttestation = SignedIdentityAttestation.fromData(att, attestorKey);
+        return signed.getDerEncoding();
+    }
+
+    // PREFIX + "user-priv.pem", PREFIX + "attestation.crt", PREFIX + "attestation-secret.pem", PREFIX + "attestor-pub.pem", "test@test.ts", "mail", PREFIX + "session-priv.pem", PREFIX + "use-attestation.json"
+    static async useAttest(
+        attestationBase64: string,
+        attestationSecretBase64: string ,
+        attestorKey: KeyPair,
+        receiverId: string,
+        type: string,
+        webDomain: string,
+        sessionKey: KeyPair = null,
+        userKey: KeyPair = null){
+
+
+
+        const attestationUint8 = base64ToUint8array(attestationBase64);
+        let att = SignedIdentityAttestation.fromBytes(attestationUint8, attestorKey);
+        let attestationSecretDerUint8 = base64ToUint8array(attestationSecretBase64);
+        // remove first 4 bytes because us der encoding
+        let attestationSecret = uint8ToBn(attestationSecretDerUint8.slice(4));
+
+        let crypto = new AttestationCrypto();
+
+        let address;
+        if (userKey) {
+            address = userKey.getAddress();
+        } else {
+            address = await SignatureUtility.connectMetamaskAndGetAddress();
+        }
+
+        let nonce = await Nonce.makeNonce(address, webDomain);
+
+        let pok: FullProofOfExponent = crypto.computeAttestationProof(attestationSecret, nonce);
+
+        try {
+            let attUsage: UseAttestation = UseAttestation.fromData(att, crypto.getType(type), pok, sessionKey);
+            let usageRequest: Eip712AttestationUsage = new Eip712AttestationUsage(userKey);
+            let res = await usageRequest.addData(webDomain, receiverId, attUsage);
+            // console.log('usageRequest ready state = ' + res);
+            // console.log('usageRequest.getJsonEncoding() = ' + usageRequest.getJsonEncoding());
+            return usageRequest.getJsonEncoding();
+        } catch (e) {
+            console.error(e);
+        }
+
+    }
+
+    static checkAttestRequestVerifiability( input:Verifiable) {
+        if (!input.verify()) {
+            console.log("Could not verify attestation signing request");
+            throw new Error("Verification failed");
+        }
+    }
+
+    static checkAttestRequestValidity( input:Validateable) {
+        if (!input.checkValidity()) {
+            console.log("Could not validate attestation signing request");
+            throw new Error("Validation failed");
+        }
+    }
+
+    static checkUsageVerifiability(input: Verifiable) {
+        if (!input.verify()) {
+            console.error("Could not verify usage request");
+            throw new Error("Verification failed");
+        }
+    }
+
+    static checkUsageValidity( input: TokenValidateable) {
+        if (!input.checkTokenValidity()) {
+            console.error("Could not validate usage request");
+            throw new Error("Validation failed");
+        }
+    }
+
+    static async verifyUsage(
+        jsonRequest: string,
+        attestorKey: KeyPair,
+        message: string,
+        WEB_DOMAIN: string,
+        signature: Uint8Array){
+
+        let sessionPublicKey: KeyPair;
+
+        try {
+            // console.log('lets create Eip712AttestationUsage from json');
+            let usageRequest: Eip712AttestationUsage = new Eip712AttestationUsage();
+            usageRequest.setDomain(WEB_DOMAIN);
+            usageRequest.fillJsonData( jsonRequest, attestorKey);
+
+            Authenticator.checkUsageVerifiability(usageRequest);
+            Authenticator.checkUsageValidity(usageRequest);
+            sessionPublicKey = usageRequest.getSessionPublicKey();
+
+        } catch (e) {
+            // Try as an  Eip712AttestationRequestWithUsage object instead, which is NOT linked to a specific website
+            console.log('Eip712AttestationUsage failed. ' + e + '. Lets try to verify Eip712AttestationRequestWithUsage');
+            let usageRequest: Eip712AttestationRequestWithUsage = new Eip712AttestationRequestWithUsage();
+            usageRequest.setDomain(WEB_DOMAIN);
+            usageRequest.fillJsonData( jsonRequest );
+            Authenticator.checkUsageVerifiability(usageRequest);
+
+            Authenticator.checkUsageValidity(usageRequest);
+            sessionPublicKey = usageRequest.getSessionPublicKey();
+            // console.log('sessionPublicKey from Eip712AttestationRequestWithUsage = '+ sessionPublicKey.getAddress());
+        }
+
+        // Validate signature
+        try {
+            let res = await sessionPublicKey.verifyStringWithSubtle(KeyPair.anySignatureToRawUint8(signature) , message);
+            if (!res) {
+                console.error("Could not verify message signature");
+                throw new Error("Signature verification failed");
+            }
+             return "SUCCESSFULLY validated usage request!";
+        } catch (e) {
+            let m = "Cant verify session with subtle. " + e;
+            console.log(m);
+            console.error(e);
+            // console.error(sessionPublicKey);
+            // throw new Error(m);
+        }
+    }
+
+    static async requestAttestAndUsage(
+        userKey: KeyPair,
+        receiverId: string,
+        type: string,
+        ATTESTOR_DOMAIN: string,
+        attestationSecretBase64: string,
+        sessionKey: KeyPair,
+        ){
+        try {
+            let attestationSecret = uint8ToBn(base64ToUint8array(attestationSecretBase64));
+
+            let address;
+            if (userKey) {
+                address = userKey.getAddress();
+            } else {
+                address = await SignatureUtility.connectMetamaskAndGetAddress();
+            }
+
+            let nonce: Uint8Array = await Nonce.makeNonce(address, ATTESTOR_DOMAIN, new Uint8Array(0), Date.now());
+            let crypto = new AttestationCrypto();
+
+            let pok: FullProofOfExponent = crypto.computeAttestationProof(attestationSecret, nonce);
+
+            let attRequest: AttestationRequestWithUsage =  AttestationRequestWithUsage.fromData(crypto.getType(type), pok, sessionKey);
+            let request: Eip712AttestationRequestWithUsage = new Eip712AttestationRequestWithUsage(userKey);
+            await request.fromData(ATTESTOR_DOMAIN, undefined, undefined, receiverId, attRequest);
+            // console.log('request.getJsonEncoding() = ' + request.getJsonEncoding());
+            return request.getJsonEncoding();
+        } catch (e) {
+            let m = "requestAttestAndUsage error. " + e;
+            console.log(m);
+            console.error(e);
+        }
+
+    }
+
+
+/*
+    static async signMessageWithSessionKey(message: Uint8Array, sessionKey: Uint8Array = new Uint8Array(0)){
+        let privKey, signature;
+        // console.log("message = " + uint8tohex(message));
+
+        try {
+            if (sessionKey && sessionKey.length) {
+                // its nodejs and session primary key received in Uint8Array
+                console.log("sessionKey = " + uint8tohex(sessionKey));
+                console.log(sessionKey);
+
+            } else {
+                // TODO read key from local storage
+            }
+            // signature = await crypto.subtle.sign(ALPHA_CONFIG.signAlgorithm, privKey, message);
+        } catch (e){
+            console.log(e);
+            // throw new Error(e);
+        }
+        // let signatureHex = uint8tohex(new Uint8Array(signature));
+        // return signatureHex;
+    }
+
+    static async verifyMessageSignatureWithSessionKey(message: Uint8Array, signature: string, sessionKey: Uint8Array = new Uint8Array(0)){
+        let privKey;
+        if (sessionKey && sessionKey.length) {
+            // its nodejs and session primary key received in Uint8Array
+            privKey = await subtle.importKey(
+                'raw',
+                sessionKey,
+                {
+                    name: "ECDSA",
+                    namedCurve: "P-256"
+                },
+                true,
+                ['sign', 'verify']
+            );
+        } else {
+            // TODO read key from local storage
+        }
+
+        let signatureUint8 = hexStringToUint8(signature);
+
+        const result = await crypto.subtle.verify(ALPHA_CONFIG.keysAlgorithm, privKey.publicKey, signatureUint8, message );
+    }
+
+ */
 
 }

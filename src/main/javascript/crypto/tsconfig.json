@@ -7,6 +7,12 @@
     "target": "es2020",
     "jsx": "react",
     "allowJs": true,
-    "moduleResolution": "node"
-  }
+    "moduleResolution": "node",
+    "strict": false,
+    "declaration": true,
+    "sourceMap": true,
+    "types": ["jest", "node"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
 }

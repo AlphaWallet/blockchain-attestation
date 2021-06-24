@@ -1,4 +1,6 @@
-import {stringToHex, hexStringToArray, base64ToUint8array} from "./utils";
+import {stringToHex, hexStringToArray, base64ToUint8array, uint8tohex, formatGeneralizedDateTime} from "./utils";
+
+const matchAll = require('string.prototype.matchall');
 
 const Asn1DerTagByType: {[index: string]:number} = {
     END_OF_CONTENT: 0,
@@ -67,16 +69,89 @@ export class Asn1Der {
     static encodeAsInteger(value: bigint) {
         return this.encode('INTEGER', value);
     }
-    // static encodeAsInteger(value: bigint) {
-    //     return this.encode('INTEGER', value);
-    // }
 
-    static encode(type: string, value: any) {
+    static encodeObjectId(objectId: string): string{
+       return Asn1Der.encode('SEQUENCE_30', Asn1Der.encode('OBJECT_ID', objectId));
+    }
+
+    static encodeName(str: string): string {
+        let matches = str.matchAll(/(\w+)=("[\w\s]+"|\w+)/g);
+        let set = '';
+        let alg = '';
+        let itemData = '';
+        if (!matches) {
+            throw new Error('wrong Name format');
+        }
+        for( const match of matches ){
+            let type = match[1];
+            let value = match[2];
+
+            // remove quotes if exists
+            if (value.substr(0,1) == "\"" && value.substr(-1) == "\"") {
+                value = value.slice(1,value.length - 1);
+            };
+            switch(type.toUpperCase()){
+                case 'CN':
+                    alg = "2.5.4.3";
+                    break;
+                case 'C':
+                    alg = "2.5.4.6";
+                    break;
+                case 'O':
+                    alg = "2.5.4.10";
+                    break;
+                case 'OU':
+                    alg = "2.5.4.11";
+                    break;
+                case 'L':
+                    alg = "2.5.4.7";
+                    break;
+                default:
+                    throw new Error('Type "' + type + '" not implemented yet');
+            }
+            itemData = Asn1Der.encode('OBJECT_ID',alg) + Asn1Der.encode('UTF8STRING',value);
+            set += Asn1Der.encode('SEQUENCE_30', itemData);
+        }
+        return Asn1Der.encode('SEQUENCE_30',Asn1Der.encode('SET', set));
+    }
+
+    static encode(type: string, value: any, id: number = 0) {
+        if (typeof value === "undefined") {
+            throw new Error('Missing value for Der encoding');
+        }
         let encType: number = Asn1DerTagByType[type];
         let encValue = '';
         switch (type) {
+            case 'OBJECT_ID':
+                if (typeof value !== "string") {
+                    throw new Error('OBJECT_ID value must be a string');
+                }
+                let valArr = value.split('.');
+                let v1 = valArr.shift();
+                let v2 = valArr.shift();
+                valArr.unshift((parseInt(v1) * 40 + parseInt(v2)).toString());
+                valArr.forEach(v => {
+                    let num: number = parseInt(v);
+                    let singleVal = '';
+                    let firstByte = true;
+                    do {
+                        let tail127 = num & 127;
+                        num = num >> 7;
+                        tail127 += firstByte ? 0 : 128;
+                        singleVal = tail127.toString(16).padStart(2, '0') + singleVal;
+                        firstByte = false;
+                    } while (num);
+                    encValue += singleVal;
+                })
+                break;
+            case "NULL_VALUE":
+                encValue = '';
+                break;
             case 'GENERALIZED_TIME':
+                encValue = stringToHex(formatGeneralizedDateTime(value));
+                break;
             case "VISIBLE_STRING":
+            case "UTF8STRING":
                 encValue = stringToHex(value);
                 break;
             case 'INTEGER':
@@ -86,13 +161,31 @@ export class Asn1Der {
                     encValue = '00' + encValue;
                 }
                 break;
+            case 'TAG':
+                if (id > 15 ){
+                    throw new Error('DER TAG more than 15 is not implemented');
+                }
+                encType = parseInt('0xA'+id);
             case "SEQUENCE_30":
+            case "SET":
             case "OCTET_STRING":
-                encValue = value;
+                if (typeof value == "string") {
+                    // suppose that its already encoded
+                    encValue = value;
+                } else if (value.constructor === Uint8Array){
+                    encValue = uint8tohex(value);
+                } else {
+                    throw new Error('Wrong data type for OCTET_STRING');
+                }
                 break;
             case "BIT_STRING":
                 encValue = '00' + value;
                 break;
+            case "BOOLEAN":
+                encValue = parseInt(value).toString().padStart(2,'0');
+                break;
+            default:
+                throw new Error('Sorry, ' + type + ' not implemented.');
         }
 
         // TODO maybe worth it to code indefinite form
@@ -104,6 +197,8 @@ export class Asn1Der {
         let dataLength: number = Math.ceil(encValue.length / 2);
 
         let dataLengthHex = dataLength.toString(16);
+        if (!dataLength) dataLengthHex = '00';
+
         dataLengthHex = (dataLengthHex.length % 2 ? '0' : '') + dataLengthHex;
 
         if (dataLength < 128) {
@@ -132,7 +227,6 @@ export class Asn1Der {
             }
             return extLength;
         } else if (b1 == 128) {
-            // TODO
             throw new Error('have to code variable length')
         }
     }
@@ -202,66 +296,6 @@ export class Asn1Der {
         }
         return entries;
     }
-
-
-    // var BodyUtf8string = Asn1Der.BodyUtf8string = (function() {
-    //     function BodyUtf8string(_io, _parent, _root) {
-    //         this._read();
-    //     }
-    //     BodyUtf8string.prototype._read = function() {
-    //         this.str = KaitaiStream.bytesToStr(this._io.readBytesFull(), "UTF-8");
-    //     }
-    //     return BodyUtf8string;
-    // })();
-
-    /**
-     * @see {@link https://docs.microsoft.com/en-us/windows/desktop/SecCertEnroll/about-object-identifier|Source}
-     */
-
-    // var BodyObjectId = Asn1Der.BodyObjectId = (function() {
-    //     function BodyObjectId(_io, _parent, _root) {
-    //         this._read();
-    //     }
-    //     BodyObjectId.prototype._read = function() {
-    //         this.firstAndSecond = this._io.readU1();
-    //         this.rest = this._io.readBytesFull();
-    //     }
-    //     Object.defineProperty(BodyObjectId.prototype, 'first', {
-    //         get: function() {
-    //             if (this._m_first !== undefined)
-    //                 return this._m_first;
-    //             this._m_first = Math.floor(this.firstAndSecond / 40);
-    //             return this._m_first;
-    //         }
-    //     });
-    //     Object.defineProperty(BodyObjectId.prototype, 'second', {
-    //         get: function() {
-    //             if (this._m_second !== undefined)
-    //                 return this._m_second;
-    //             this._m_second = KaitaiStream.mod(this.firstAndSecond, 40);
-    //             return this._m_second;
-    //         }
-    //     });
-    //
-    //     return BodyObjectId;
-    // })();
-
-
-
-    // var BodyPrintableString = Asn1Der.BodyPrintableString = (function() {
-    //     function BodyPrintableString(_io, _parent, _root) {
-    //         this._io = _io;
-    //         this._parent = _parent;
-    //         this._root = _root || this;
-    //
-    //         this._read();
-    //     }
-    //     BodyPrintableString.prototype._read = function() {
-    //         this.str = KaitaiStream.bytesToStr(this._io.readBytesFull(), "ASCII");
-    //     }
-    //
-    //     return BodyPrintableString;
-    // })();
 }
 
 

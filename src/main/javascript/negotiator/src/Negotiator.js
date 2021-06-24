@@ -105,7 +105,8 @@ export class Negotiator {
                     ticketBlob: base64ticket,
                     ticketSecret: ticketSecret,
                     attestationOrigin: this.attestationOrigin,
-                }, res => {
+                },
+                        res => {
                     console.log('sign result:',res);
                     window.parent.postMessage({iframeCommand: "useTokenData", iframeData: {useToken: res, message: '', success: !!res}}, referrer.origin);
                 });

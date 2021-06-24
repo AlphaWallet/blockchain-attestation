@@ -2,15 +2,31 @@ import {AsnProp, AsnPropTypes, AsnType, AsnTypeTypes} from "@peculiar/asn1-schem
 import {ValidityValue, Version, AlgorithmIdentifierASN, Extensions} from "./AuthenticationFramework";
 import {Name} from "./InformationFramework";
 
-export class SubjectPublicKeyInfoValue {
-    @AsnProp({ type: AlgorithmIdentifierASN }) public algorithm: AlgorithmIdentifierASN;
-    @AsnProp({ type: AsnPropTypes.BitString }) public subjectPublicKey: AsnPropTypes.BitString;
+export class PublicKeyInfoValue {
+    // @AsnProp({ type: AlgorithmIdentifierASN }) public algorithm: AlgorithmIdentifierASN;
+    @AsnProp({ type: AsnPropTypes.Any }) public algorithm: Uint8Array;
+    @AsnProp({ type: AsnPropTypes.BitString }) public publicKey: Uint8Array;
 }
 
 @AsnType({ type: AsnTypeTypes.Choice })
 export class SubjectPublicKeyInfo {
-    @AsnProp({ type: SubjectPublicKeyInfoValue }) public value?: SubjectPublicKeyInfoValue;
+    @AsnProp({ type: PublicKeyInfoValue }) public value?: PublicKeyInfoValue;
     @AsnProp({ type: AsnPropTypes.Any }) public null? = false;
+}
+
+export class PrivateKeyData {
+    @AsnProp({ type: AsnPropTypes.Integer }) public one: number;
+    @AsnProp({ type: AsnPropTypes.OctetString }) public privateKey: Uint8Array;
+    @AsnProp({ type: AsnPropTypes.Any, context: 0 })
+    public algDescr: Uint8Array;
+    @AsnProp({ type: AsnPropTypes.BitString, context: 1 })
+    public publicKey: Uint8Array;
+}
+
+export class PrivateKeyInfo {
+    @AsnProp({ type: AsnPropTypes.Integer }) public one: number;
+    @AsnProp({ type: AsnPropTypes.Any }) public algIdent: Uint8Array;
+    @AsnProp({ type: AsnPropTypes.OctetString }) public keysData: Uint8Array;
 }
 
 @AsnType({ type: AsnTypeTypes.Choice })
@@ -37,7 +53,7 @@ export class SignedInfo {
     @AsnProp({ type: AsnPropTypes.Integer }) public serialNumber: number; // CertificateSerialNumber,
     @AsnProp({ type: AlgorithmIdentifierASN }) public signature: AlgorithmIdentifierASN; // AlgorithmIdentifier,
     @AsnProp({ type: Name }) public issuer:Name; // Name,
-    @AsnProp({ type: ValidityValue }) public validity:ValidityValue; // Validity,
+    @AsnProp({ type: ValidityValue, optional: true }) public validity?:ValidityValue; // Validity,
     @AsnProp({ type: Name }) public subject: Name; //  Name,
     @AsnProp({ type: SubjectPublicKeyInfo }) public subjectPublicKeyInfo: SubjectPublicKeyInfo; // SubjectPublicKeyInfo,
     @AsnProp({ type: SmartContract, optional: true }) public contract?: SmartContract; // contract             SEQUENCE OF SmartContract OPTIONAL,
@@ -49,5 +65,5 @@ export class MyAttestation {
     @AsnProp({ type: AsnPropTypes.Any }) public signedInfo: Uint8Array = new Uint8Array();
     // @AsnProp({ type: SignedInfo }) public signedInfo:SignedInfo;
     @AsnProp({ type: AlgorithmIdentifierASN }) public signatureAlgorithm: AlgorithmIdentifierASN;
-    @AsnProp({ type: AsnPropTypes.BitString }) public signatureValue: AsnPropTypes.BitString;
+    @AsnProp({ type: AsnPropTypes.BitString }) public signatureValue: Uint8Array;
 }

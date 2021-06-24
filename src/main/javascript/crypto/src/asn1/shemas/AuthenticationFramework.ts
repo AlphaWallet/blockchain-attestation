@@ -1,10 +1,9 @@
 import {AsnProp, AsnPropTypes, AsnType, AsnTypeTypes} from "@peculiar/asn1-schema";
-import {Null} from "asn1js";
-
-const AsnCRITICAL = false;
+// import {Null} from "asn1js";
 
 export class AlgorithmIdentifierASN {
-    @AsnProp({ type: AsnPropTypes.ObjectIdentifier }) public algorithm: AsnPropTypes.ObjectIdentifier;// OBJECT IDENTIFIER,
+    // @AsnProp({ type: AsnPropTypes.ObjectIdentifier }) public algorithm: AsnPropTypes.ObjectIdentifier;// OBJECT IDENTIFIER,
+    @AsnProp({ type: AsnPropTypes.ObjectIdentifier }) public algorithm: string;// OBJECT IDENTIFIER,
     @AsnProp({ type: AsnPropTypes.Any, optional: true }) public parameters?: AsnPropTypes.Any;// ANY DEFINED BY algorithm OPTIONAL
 }
 
@@ -37,7 +36,7 @@ class Validity {
     @AsnProp({ type: ValidityValue, context: 0 })
     public value?: ValidityValue;
     @AsnProp({ type: AsnPropTypes.Integer, context: 1 })
-    public null?: Null;
+    public null?: null;
 }
 
 export class Extension {

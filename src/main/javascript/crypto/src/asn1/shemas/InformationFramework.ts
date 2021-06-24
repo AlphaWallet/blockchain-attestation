@@ -1,5 +1,4 @@
 import {AsnArray, AsnProp, AsnPropTypes, AsnType, AsnTypeTypes} from "@peculiar/asn1-schema";
-import {Null} from "asn1js";
 
 /*
 // RelativeDistinguishedName ::=

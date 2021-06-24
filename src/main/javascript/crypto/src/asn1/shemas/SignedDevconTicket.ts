@@ -2,7 +2,7 @@ import { AsnProp, AsnPropTypes } from "@peculiar/asn1-schema";
 import { ValidityValue, AlgorithmIdentifierASN} from "./AuthenticationFramework";
 
 export class DevconTicket {
-    @AsnProp({ type: AsnPropTypes.Integer }) public devconId: number;
+    @AsnProp({ type: AsnPropTypes.Utf8String }) public devconId: string;
     @AsnProp({ type: AsnPropTypes.Integer }) public ticketId: number;
     @AsnProp({ type: AsnPropTypes.Integer }) public ticketClass: number;
 }
