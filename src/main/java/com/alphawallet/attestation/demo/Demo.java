@@ -4,6 +4,7 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 
 import com.alphawallet.attestation.AttestationRequest;
+import com.alphawallet.attestation.AttestationAndUsageValidator;
 import com.alphawallet.attestation.AttestationRequestWithUsage;
 import com.alphawallet.attestation.AttestedObject;
 import com.alphawallet.attestation.FullProofOfExponent;
@@ -71,8 +72,11 @@ public class Demo {
       List<String> arguments = line.getArgList();
       if (arguments.size() == 0) {
         System.err.println("First argument must be either \"keys\", \"create-cheque\", \"receive-cheque\", "
-            + "\"request-attest\" or \"construct-attest\".");
-        return;
+            + "\"request-attest\", \"construct-attest\", \"construct-attest-and-usage\", \"use-attest\", "
+            + "\"sign-message\", \"verify-usage\", \"verify-attest-and-usage\", \"request-attest\" or \"request-attest-and-usage\".");
+        throw new RuntimeException("First argument must be either \"keys\", \"create-cheque\", \"receive-cheque\", "
+            + "\"request-attest\", \"construct-attest\", \"construct-attest-and-usage\", \"use-attest\", "
+            + "\"sign-message\", \"verify-usage\", \"verify-attest-and-usage\", \"request-attest\" or \"request-attest-and-usage\".");
       }
       switch (arguments.get(0).toLowerCase()) {
         case "keys":
@@ -166,6 +170,22 @@ public class Demo {
           System.out.println("Finished signing attestation");
           break;
 
+        case "construct-attest-and-usage":
+          // TODO very limited functionality.
+          // Should use a configuration file and have a certificate to its signing key
+          System.out.println("Signing attestation and usage request...");
+          try {
+            long validity = Timestamp.DEFAULT_TIME_LIMIT_MS;
+            constructAttestAndUse(Paths.get(arguments.get(1)), arguments.get(2), validity, Paths.get(arguments.get(4)), Paths.get(arguments.get(5)));
+          } catch (Exception e) {
+            System.err.println("Was expecting: <signing key input dir> <issuer name> "
+                + "<validity in seconds> <attestation request input dir> "
+                + "<signed attestation output dir>");
+            throw e;
+          }
+          System.out.println("Finished signing attestation");
+          break;
+
         case "use-attest":
           System.out.println("Constructing attestation usage object");
           try {
@@ -202,10 +222,21 @@ public class Demo {
           System.out.println("Finished verifying message");
           break;
 
+        case "verify-attest-and-usage":
+          System.out.println("Verifying message usage");
+          try {
+            verifyAttestAndUsage(Paths.get(arguments.get(1)), Paths.get(arguments.get(2)), Paths.get(arguments.get(3)), arguments.get(4), Paths.get(arguments.get(5)));
+          } catch (Exception e) {
+            System.err.println("Was expecting: <usage/attestation request dir> <signed attestation dir> <attestor verification key dir> <message> <signature dir>");
+            throw e;
+          }
+          System.out.println("Finished verifying message");
+          break;
+
         default:
           System.err.println("First argument must be either \"keys\", \"create-cheque\", \"receive-cheque\", "
-              + "\"request-attest\", \"construct-attest\", \"use-attest\", \"sign-message\", \"verify-usage\","
-              + " or \"request-attest-and-usage\".");
+              + "\"request-attest\", \"construct-attest\", \"construct-attest-and-usage\", \"use-attest\", "
+              + "\"sign-message\", \"verify-usage\", \"verify-attest-and-usage\", \"request-attest\" or \"request-attest-and-usage\".");
           throw new IllegalArgumentException("Unknown role");
       }
     }
@@ -331,21 +362,29 @@ public class Demo {
       long validityInMilliseconds, Path pathRequest, Path attestationDir) throws Exception {
     AsymmetricCipherKeyPair keys = DERUtility.restoreBase64Keys(Files.readAllLines(pathAttestorKey));
     String jsonRequest = String.join("", Files.readAllLines(pathRequest));
-    IdentifierAttestation att = null;
-    try {
-      Eip712AttestationRequest attestationRequest = new Eip712AttestationRequest(ATTESTOR_DOMAIN, jsonRequest);
-      checkAttestRequestVerifiability(attestationRequest);
-      checkAttestRequestValidity(attestationRequest);
-      byte[] commitment = AttestationCrypto.makeCommitment(attestationRequest.getIdentifier(), attestationRequest.getType(), attestationRequest.getPok().getRiddle());
-      att = new IdentifierAttestation(commitment, attestationRequest.getUserPublicKey());
-    } catch (IllegalArgumentException e) {
-      // Restores as an Eip712AttestationRequestWithUsage object instead
-      Eip712AttestationRequestWithUsage attestationRequest = new Eip712AttestationRequestWithUsage(ATTESTOR_DOMAIN, jsonRequest);
-      checkAttestRequestVerifiability(attestationRequest);
-      checkAttestRequestValidity(attestationRequest);
-      byte[] commitment = AttestationCrypto.makeCommitment(attestationRequest.getIdentifier(), attestationRequest.getType(), attestationRequest.getPok().getRiddle());
-      att = new IdentifierAttestation(commitment, attestationRequest.getUserPublicKey());
-    }
+    Eip712AttestationRequest attestationRequest = new Eip712AttestationRequest(ATTESTOR_DOMAIN, jsonRequest);
+    checkAttestRequestVerifiability(attestationRequest);
+    checkAttestRequestValidity(attestationRequest);
+    byte[] commitment = AttestationCrypto.makeCommitment(attestationRequest.getIdentifier(), attestationRequest.getType(), attestationRequest.getPok().getRiddle());
+    IdentifierAttestation att = new IdentifierAttestation(commitment, attestationRequest.getUserPublicKey());
+    att.setIssuer("CN=" + issuerName);
+    att.setSerialNumber(new Random().nextLong());
+    Date now = new Date();
+    att.setNotValidBefore(now);
+    att.setNotValidAfter(new Date(Clock.systemUTC().millis() + validityInMilliseconds));
+    SignedIdentityAttestation signed = new SignedIdentityAttestation(att, keys);
+    DERUtility.writePEM(signed.getDerEncoding(), "ATTESTATION", attestationDir);
+  }
+
+  private static void constructAttestAndUse(Path pathAttestorKey, String issuerName,
+      long validityInMilliseconds, Path pathRequest, Path attestationDir) throws Exception {
+    AsymmetricCipherKeyPair keys = DERUtility.restoreBase64Keys(Files.readAllLines(pathAttestorKey));
+    String jsonRequest = String.join("", Files.readAllLines(pathRequest));
+    Eip712AttestationRequestWithUsage attestationRequest = new Eip712AttestationRequestWithUsage(ATTESTOR_DOMAIN, jsonRequest);
+    checkAttestRequestVerifiability(attestationRequest);
+    checkAttestRequestValidity(attestationRequest);
+    byte[] commitment = AttestationCrypto.makeCommitment(attestationRequest.getIdentifier(), attestationRequest.getType(), attestationRequest.getPok().getRiddle());
+    IdentifierAttestation att = new IdentifierAttestation(commitment, attestationRequest.getUserPublicKey());
     att.setIssuer("CN=" + issuerName);
     att.setSerialNumber(new Random().nextLong());
     Date now = new Date();
@@ -397,20 +436,36 @@ public class Demo {
     AsymmetricKeyParameter attestorKey = PublicKeyFactory.createKey(DERUtility.restoreBytes(Files.readAllLines(attestorVerificationKeyDir)));
     byte[] signature = Files.readAllBytes(signatureDir);
     String jsonRequest = Files.readString(pathRequest);
-    AsymmetricKeyParameter sessionPublicKey = null;
-    try {
-      Eip712AttestationUsage usageRequest = new Eip712AttestationUsage(WEB_DOMAIN, attestorKey, jsonRequest);
-      checkUsageVerifiability(usageRequest);
-      checkUsageValidity(usageRequest);
-      sessionPublicKey = usageRequest.getSessionPublicKey();
-    } catch (IllegalArgumentException e) {
-      // Try as an  Eip712AttestationRequestWithUsage object instead, which is NOT linked to a specific website
-      Eip712AttestationRequestWithUsage usageRequest = new Eip712AttestationRequestWithUsage(ATTESTOR_DOMAIN, jsonRequest);
-      checkUsageVerifiability(usageRequest);
-      checkUsageValidity(usageRequest);
-      sessionPublicKey = usageRequest.getSessionPublicKey();
-    }
+    Eip712AttestationUsage usageRequest = new Eip712AttestationUsage(WEB_DOMAIN, attestorKey, jsonRequest);
+    checkUsageVerifiability(usageRequest);
+    checkUsageValidity(usageRequest);
+    AsymmetricKeyParameter sessionPublicKey = usageRequest.getSessionPublicKey();
     // Validate signature
+    if (!SignatureUtility.verifySHA256(message.getBytes(StandardCharsets.UTF_8), signature, sessionPublicKey)) {
+      System.err.println("Could not verify message signature");
+      throw new RuntimeException("Signature verification failed");
+    }
+    System.out.println("SUCCESSFULLY validated usage request!");
+  }
+
+  private static void verifyAttestAndUsage(Path pathRequest, Path attestationDir,
+      Path attestorVerificationKeyDir, String message, Path signatureDir) throws IOException {
+    AsymmetricKeyParameter attestorKey = PublicKeyFactory.createKey(DERUtility.restoreBytes(Files.readAllLines(attestorVerificationKeyDir)));
+    byte[] signature = Files.readAllBytes(signatureDir);
+    String jsonRequest = Files.readString(pathRequest);
+    Eip712AttestationRequestWithUsage usageRequest = new Eip712AttestationRequestWithUsage(ATTESTOR_DOMAIN, jsonRequest);
+    checkUsageVerifiability(usageRequest);
+    checkUsageValidity(usageRequest);
+    SignedIdentityAttestation att = new SignedIdentityAttestation(DERUtility.restoreBytes(Files.readAllLines(attestationDir)), attestorKey);
+    // Wrap the data from Eip712AttestationRequestWithUsage and attestation into UseAttestation
+    UseAttestation attUsage = new UseAttestation(att, usageRequest.getType(), usageRequest.getPok(),
+        usageRequest.getSessionPublicKey());
+    // Validate that the attestation and Eip712AttestationRequestWithUsage work together
+    AttestationAndUsageValidator arua = new AttestationAndUsageValidator(attUsage, usageRequest.getIdentifier(), usageRequest.getUserPublicKey());
+    checkUsageVerifiability(arua);
+    checkUsageValidity(arua);
+    AsymmetricKeyParameter sessionPublicKey = usageRequest.getSessionPublicKey();
+    // Validate signature of session key
     if (!SignatureUtility.verifySHA256(message.getBytes(StandardCharsets.UTF_8), signature, sessionPublicKey)) {
       System.err.println("Could not verify message signature");
       throw new RuntimeException("Signature verification failed");
@@ -439,6 +494,9 @@ public class Demo {
         break;
       case "phone":
         type = AttestationType.PHONE;
+        break;
+      case "twitter":
+        type = AttestationType.TWITTER;
         break;
       default:
         System.err.println("Could not parse identifier type, must be either \"mail\" or \"phone\"");

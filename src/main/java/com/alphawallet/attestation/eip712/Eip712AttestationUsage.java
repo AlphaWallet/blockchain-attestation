@@ -1,21 +1,18 @@
 package com.alphawallet.attestation.eip712;
 
+import com.alphawallet.attestation.AttestationAndUsageValidator;
 import com.alphawallet.attestation.FullProofOfExponent;
 import com.alphawallet.attestation.IdentifierAttestation.AttestationType;
 import com.alphawallet.attestation.SignedIdentityAttestation;
 import com.alphawallet.attestation.UseAttestation;
-import com.alphawallet.attestation.core.AttestationCrypto;
 import com.alphawallet.attestation.core.ExceptionUtil;
-import com.alphawallet.attestation.core.SignatureUtility;
 import com.alphawallet.attestation.core.URLUtility;
 import com.alphawallet.attestation.core.Verifiable;
 import com.alphawallet.attestation.eip712.Eip712AttestationUsageEncoder.AttestationUsageData;
 import java.io.IOException;
-import java.math.BigInteger;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.crypto.params.AsymmetricKeyParameter;
-import org.bouncycastle.math.ec.ECPoint;
 import org.tokenscript.eip712.Eip712Issuer;
 import org.tokenscript.eip712.Eip712Validator;
 import org.tokenscript.eip712.JsonEncodable;
@@ -35,7 +32,7 @@ public class Eip712AttestationUsage extends Eip712Validator implements JsonEncod
   public static final int PLACEHOLDER_CHAIN_ID = 0;
 
   private final long maxTokenValidityInMs;
-  private final UseAttestation useAttestation;
+  private final AttestationAndUsageValidator validator;
   private final AttestationUsageData data;
   private final String jsonEncoding;
   private final AsymmetricKeyParameter userPublicKey;
@@ -49,10 +46,10 @@ public class Eip712AttestationUsage extends Eip712Validator implements JsonEncod
     super(attestorDomain, new Eip712AttestationUsageEncoder(chainId));
     try {
       this.maxTokenValidityInMs = maxTokenValidityInMs;
-      this.useAttestation = useAttestation;
       this.jsonEncoding = makeToken(identifier, useAttestation, signingKey);
       this.userPublicKey = retrieveUserPublicKey(jsonEncoding, AttestationUsageData.class);
       this.data = retrieveUnderlyingObject(jsonEncoding, AttestationUsageData.class);
+      this.validator = new AttestationAndUsageValidator(useAttestation, identifier, userPublicKey);
     } catch (Exception e ) {
       throw ExceptionUtil.throwException(logger,
           new IllegalArgumentException("Could not encode asn1"));
@@ -74,7 +71,8 @@ public class Eip712AttestationUsage extends Eip712Validator implements JsonEncod
       this.jsonEncoding = jsonEncoding;
       this.userPublicKey = retrieveUserPublicKey(jsonEncoding, AttestationUsageData.class);
       this.data = retrieveUnderlyingObject(jsonEncoding, AttestationUsageData.class);
-      this.useAttestation = new UseAttestation(URLUtility.decodeData(data.getPayload()), attestationIssuerVerificationKey);
+      UseAttestation useAttestation = new UseAttestation(URLUtility.decodeData(data.getPayload()), attestationIssuerVerificationKey);
+      this.validator = new AttestationAndUsageValidator(useAttestation, data.getIdentifier(), userPublicKey);
     } catch (Exception e ) {
       throw ExceptionUtil.throwException(logger,
           new IllegalArgumentException("Could not decode asn1"));
@@ -100,17 +98,6 @@ public class Eip712AttestationUsage extends Eip712Validator implements JsonEncod
     return issuer.buildSignedTokenFromJsonObject(data, domain);
   }
 
-  private boolean proofLinking() {
-    BigInteger candidateExponent = AttestationCrypto.mapToCurveMultiplier(getType(), getIdentifier());
-    ECPoint commitmentPoint = AttestationCrypto.decodePoint(getAttestation().getUnsignedAttestation().getCommitment());
-    ECPoint candidateRiddle = commitmentPoint.subtract(AttestationCrypto.G.multiply(candidateExponent));
-    if (!candidateRiddle.equals(getPok().getRiddle())) {
-      logger.error("Could not validate proof linking to attestation commitment");
-      return false;
-    }
-    return true;
-  }
-
   public String getIdentifier() {
     return data.getIdentifier();
   }
@@ -120,19 +107,19 @@ public class Eip712AttestationUsage extends Eip712Validator implements JsonEncod
   }
 
   public FullProofOfExponent getPok() {
-    return useAttestation.getPok();
+    return validator.getUseAttestation().getPok();
   }
 
   public AttestationType getType() {
-    return useAttestation.getType();
+    return validator.getUseAttestation().getType();
   }
 
   public SignedIdentityAttestation getAttestation() {
-    return useAttestation.getAttestation();
+    return validator.getUseAttestation().getAttestation();
   }
 
   public AsymmetricKeyParameter getSessionPublicKey() {
-    return useAttestation.getSessionPublicKey();
+    return validator.getUseAttestation().getSessionPublicKey();
   }
 
   @Override
@@ -144,8 +131,8 @@ public class Eip712AttestationUsage extends Eip712Validator implements JsonEncod
   public boolean checkTokenValidity() {
     long nonceMinTime = Timestamp.stringTimestampToLong(data.getExpirationTime()) - maxTokenValidityInMs;
     long nonceMaxTime = Timestamp.stringTimestampToLong(data.getExpirationTime());
-    if (!useAttestation.checkValidity()) {
-      logger.error("Not not validate underlying object");
+    if (!validator.checkTokenValidity()) {
+      logger.error("Could not validate underlying object");
       return false;
     }
     if (!data.getDescription().equals(encoder.getUsageValue())) {
@@ -158,18 +145,9 @@ public class Eip712AttestationUsage extends Eip712Validator implements JsonEncod
       logger.error("Timestamp not valid");
       return false;
     }
-    if (!SignatureUtility.verifyKeyAgainstAddress(
-        userPublicKey, useAttestation.getAttestation().getUnsignedAttestation().getAddress())) {
-      logger.error("Could not verify signature");
-      return false;
-    }
-    if (!Nonce.validateNonce(useAttestation.getPok().getNonce(),
-        (useAttestation.getAttestation().getUnsignedAttestation()).getAddress(), domain, new Timestamp(nonceMinTime), new Timestamp(nonceMaxTime))) {
+    if (!Nonce.validateNonce(getPok().getNonce(),
+        (getAttestation().getUnsignedAttestation()).getAddress(), domain, new Timestamp(nonceMinTime), new Timestamp(nonceMaxTime))) {
       logger.error("Nonce validation failed");
-      return false;
-    }
-    if (!proofLinking()) {
-      logger.error("Could not verify proof linking");
       return false;
     }
     return true;
@@ -177,8 +155,8 @@ public class Eip712AttestationUsage extends Eip712Validator implements JsonEncod
 
   @Override
   public boolean verify() {
-    if (!useAttestation.verify()) {
-      logger.error("Could not verify underlying UseAttestation object");
+    if (!validator.verify()) {
+      logger.error("Could not verify underlying object");
       return false;
     }
     return true;

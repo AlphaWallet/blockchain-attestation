@@ -72,13 +72,13 @@ public class TestDemo {
     args = new String[]{"request-attest-and-usage", PREFIX + "user-priv.pem", "test@test.ts", "mail",  PREFIX + "session-priv.pem", PREFIX + "use-and-request-attestation.json", PREFIX + "attestation-secret.pem"};
     Demo.main(args);
     // Construct attestation
-    args = new String[]{"construct-attest", PREFIX + "attestor-priv.pem", "AlphaWallet", "3600", PREFIX + "use-and-request-attestation.json", PREFIX + "attestation.crt"};
+    args = new String[]{"construct-attest-and-usage", PREFIX + "attestor-priv.pem", "AlphaWallet", "3600", PREFIX + "use-and-request-attestation.json", PREFIX + "attestation.crt"};
     Demo.main(args);
     // Sign message
     args = new String[]{"sign-message", PREFIX + "session-priv.pem", "message", PREFIX + "signature.bin"};
     Demo.main(args);
     // Verify usage
-    args = new String[]{"verify-usage", PREFIX + "use-and-request-attestation.json", PREFIX + "attestor-pub.pem", "message", PREFIX + "signature.bin"};
+    args = new String[]{"verify-attest-and-usage", PREFIX + "use-and-request-attestation.json", PREFIX + "attestation.crt", PREFIX + "attestor-pub.pem", "message", PREFIX + "signature.bin"};
     Demo.main(args);
   }
 
