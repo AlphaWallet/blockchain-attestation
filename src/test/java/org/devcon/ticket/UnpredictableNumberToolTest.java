@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.alphawallet.attestation.core.AttestationCrypto;
 import java.security.SecureRandom;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,7 +17,6 @@ public class UnpredictableNumberToolTest {
   private static final String DOMAIN = "http://www.hotel-bogota.com";
   private static byte[] macKey;
   private static SecureRandom rand;
-  private static AttestationCrypto crypto;
 
   @Mock
   UnpredictableNumberBundle mockedUn;
@@ -28,7 +26,6 @@ public class UnpredictableNumberToolTest {
     rand = SecureRandom.getInstance("SHA1PRNG");
     rand.setSeed("seed".getBytes());
 
-    crypto = new AttestationCrypto(rand);
     macKey = rand.generateSeed(16);
   }
 
@@ -38,6 +35,7 @@ public class UnpredictableNumberToolTest {
 
     Mockito.when(mockedUn.getDomain()).thenReturn(DOMAIN);
     Mockito.when(mockedUn.getExpiration()).thenReturn(Long.MAX_VALUE);
+    Mockito.when(mockedUn.getRandomness()).thenReturn(new byte[UnpredictableNumberTool.BYTES_IN_SEED]);
     Mockito.when(mockedUn.getNumber()).thenReturn("abcdefghijk");
   }
 
@@ -46,7 +44,7 @@ public class UnpredictableNumberToolTest {
     UnpredictableNumberTool unt = new UnpredictableNumberTool(macKey, DOMAIN);
     assertEquals(DOMAIN, unt.getDomain());
     UnpredictableNumberBundle un = unt.getUnpredictableNumberBundle();
-    assertTrue(unt.validateUnpredictableNumber(un.getNumber(), un.getExpiration()));
+    assertTrue(unt.validateUnpredictableNumber(un.getNumber(), un.getRandomness(), un.getExpiration()));
   }
 
   @Test
@@ -59,17 +57,17 @@ public class UnpredictableNumberToolTest {
     // expired jan 1, 1970
     Mockito.when(mockedUn.getExpiration()).thenReturn(0L);
     UnpredictableNumberTool unt = new UnpredictableNumberTool(macKey, DOMAIN);
-    assertFalse(unt.validateUnpredictableNumber(mockedUn.getNumber(), mockedUn.getExpiration()));
+    assertFalse(unt.validateUnpredictableNumber(mockedUn.getNumber(), mockedUn.getRandomness(), mockedUn.getExpiration()));
   }
 
   @Test
   public void wrongUnt() {
     UnpredictableNumberTool unt = new UnpredictableNumberTool(macKey, DOMAIN);
     UnpredictableNumberBundle un = unt.getUnpredictableNumberBundle();
-    assertTrue(unt.validateUnpredictableNumber(un.getNumber(), un.getExpiration()));
+    assertTrue(unt.validateUnpredictableNumber(un.getNumber(), un.getRandomness(), un.getExpiration()));
     UnpredictableNumberTool wrongUnt = new UnpredictableNumberTool(macKey, "http://www.other-domain.com");
-    assertFalse(wrongUnt.validateUnpredictableNumber(un.getNumber(), un.getExpiration()));
+    assertFalse(wrongUnt.validateUnpredictableNumber(un.getNumber(), mockedUn.getRandomness(), un.getExpiration()));
     UnpredictableNumberTool otherWrongUnt = new UnpredictableNumberTool(rand.generateSeed(16), DOMAIN);
-    assertFalse(otherWrongUnt.validateUnpredictableNumber(un.getNumber(), un.getExpiration()));
+    assertFalse(otherWrongUnt.validateUnpredictableNumber(un.getNumber(), mockedUn.getRandomness(), un.getExpiration()));
   }
 }

@@ -2,6 +2,7 @@ package org.devcon.ticket;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -11,8 +12,10 @@ import com.alphawallet.attestation.IdentifierAttestation;
 import com.alphawallet.attestation.SignedIdentityAttestation;
 import com.alphawallet.attestation.core.AttestationCrypto;
 import com.alphawallet.attestation.core.SignatureUtility;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigInteger;
 import java.security.SecureRandom;
+import java.time.Clock;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,7 +57,7 @@ public class UseTicketBundleTest {
     attestorKeys = SignatureUtility.constructECKeys(rand);
     ticketIssuerKeys = SignatureUtility.constructECKeys(rand);
     macKey = rand.generateSeed(16);
-    unt = new UnpredictableNumberTool(macKey, DOMAIN, UnpredictableNumberTool.DEFAULT_VALIDITY_IN_MS);
+    unt = new UnpredictableNumberTool(rand, macKey, DOMAIN, UnpredictableNumberTool.DEFAULT_VALIDITY_IN_MS);
   }
 
   @BeforeEach
@@ -73,6 +76,7 @@ public class UseTicketBundleTest {
 
     Mockito.when(mockedUn.getDomain()).thenReturn(DOMAIN);
     Mockito.when(mockedUn.getExpiration()).thenReturn(Long.MAX_VALUE);
+    Mockito.when(mockedUn.getRandomness()).thenReturn(new byte[UnpredictableNumberTool.BYTES_IN_SEED]);
     Mockito.when(mockedUn.getNumber()).thenReturn("abcdefghijk");
   }
 
@@ -104,6 +108,36 @@ public class UseTicketBundleTest {
     assertTrue(newBundle.verify());
     assertTrue(newBundle.validateAndVerify(unt));
     assertEquals(refJson, newBundle.getJsonBundle());
+  }
+
+  @Test
+  public void sanity() throws Exception {
+    UnpredictableNumberBundle un = unt.getUnpredictableNumberBundle();
+    UnpredictableNumberBundle newerUn = unt.getUnpredictableNumberBundle();
+    ObjectMapper jsonMapper = new ObjectMapper();
+    // Verify that the ticket is different
+    assertNotEquals(jsonMapper.writeValueAsString(un), jsonMapper.writeValueAsString(newerUn));
+  }
+
+  @Test
+  public void sanityTime() throws Exception {
+    SecureRandom rand = SecureRandom.getInstance("SHA1PRNG");
+    rand.setSeed("seed".getBytes());
+    UnpredictableNumberTool unt = new UnpredictableNumberTool(rand, macKey, DOMAIN, UnpredictableNumberTool.DEFAULT_VALIDITY_IN_MS);
+    UnpredictableNumberBundle un = unt.getUnpredictableNumberBundle();
+    rand.setSeed("seed".getBytes()); // Reset the randomness generator
+    Thread.sleep(2); // Ensure the expiration changes
+    UnpredictableNumberBundle newerUn = unt.getUnpredictableNumberBundle();
+    ObjectMapper jsonMapper = new ObjectMapper();
+    // Verify that the ticket is different
+    assertNotEquals(jsonMapper.writeValueAsString(un), jsonMapper.writeValueAsString(newerUn));
+  }
+
+  @Test
+  public void worksInTheFuture() throws Exception {
+    UnpredictableNumberBundle un = unt.getUnpredictableNumberBundle();
+    // Check it is valid at least 58 min in the future
+    assertTrue(un.getExpiration() > Clock.systemUTC().millis() + 3500 * 1000);
   }
 
   @Test

@@ -93,7 +93,7 @@ public class UseTicketBundle implements Verifiable {
       logger.error("Use ticket is not valid");
       return false;
     }
-    if (!unt.validateUnpredictableNumber(un.getNumber(), un.getExpiration())) {
+    if (!unt.validateUnpredictableNumber(un.getNumber(), un.getRandomness(), un.getExpiration())) {
       logger.error("Unpredictable number is not valid ");
       return false;
     }
