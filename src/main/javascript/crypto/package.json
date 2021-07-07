@@ -32,6 +32,7 @@
     "@peculiar/asn1-schema": "^2.0.27",
     "asn1js": "^2.0.26",
     "elliptic": "^6.5.3",
-    "js-sha3": "^0.8.0"
+    "js-sha3": "^0.8.0",
+    "secure-random": "^1.1.2"
   }
 }
