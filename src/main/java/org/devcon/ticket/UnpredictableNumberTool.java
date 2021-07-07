@@ -9,7 +9,7 @@ import java.security.SecureRandom;
 import java.time.Clock;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.bouncycastle.crypto.digests.KeccakDigest;
+import org.bouncycastle.crypto.digests.SHA3Digest;
 import org.bouncycastle.crypto.macs.HMac;
 import org.bouncycastle.crypto.params.KeyParameter;
 import org.tokenscript.eip712.Eip712Common;
@@ -24,7 +24,7 @@ public class UnpredictableNumberTool {
   private final SecureRandom random;
   private final String domain;
   private final long validityInMs;
-  private final HMac hmac = new HMac(new KeccakDigest(256));
+  private final HMac hmac = new HMac(new SHA3Digest(256));
 
   public UnpredictableNumberTool(byte[] key, String domain) {
     this(new SecureRandom(), key, domain);
