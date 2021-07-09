@@ -8,5 +8,9 @@
     "jsx": "react",
     "allowJs": true,
     "moduleResolution": "node"
-  }
+  },
+  "exclude": [
+    "src/**/*.test.ts",
+    "node_modules"
+  ]
 }
