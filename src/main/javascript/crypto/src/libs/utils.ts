@@ -111,7 +111,7 @@ export function uint8arrayToBase64( bytes: Uint8Array ): string {
     for (var i = 0; i < len; i++) {
         binary += String.fromCharCode( bytes[ i ] );
     }
-    return window.btoa( binary );
+    return btoa( binary );
 }
 export function base64ToUint8array( base64str: string ): Uint8Array {
     // change base64url to base64
@@ -154,4 +154,13 @@ export function BnPowMod(base: bigint, n: bigint, mod: bigint) {
 
 export function uint8tohex(uint8: Uint8Array): string {
     return Array.from(uint8).map(i => ('0' + i.toString(16)).slice(-2)).join('');
+}
+
+export function isDomainValid(domain: string): boolean {
+    try {
+        new URL(domain);
+    } catch (e) {
+        return false;
+    }
+    return true;
 }
